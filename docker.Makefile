@@ -32,7 +32,7 @@ build_shell_validate_image:
 
 # build executable using a container
 binary: build_docker_image
-	docker run --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make binary
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make binary
 
 build: binary
 
@@ -49,7 +49,11 @@ test: build_docker_image
 # build the CLI for multiple architectures using a container
 .PHONY: cross
 cross: build_cross_image
-	docker run --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) make cross
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) make cross
+
+.PHONY: cross-shell
+cross-shell: build_cross_image
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) bash
 
 .PHONY: watch
 watch: build_docker_image
