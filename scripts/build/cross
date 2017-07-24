@@ -3,7 +3,7 @@
 # Build a binary for all supported platforms
 #
 
-set -eu -o pipefail
+set -eux -o pipefail
 
 BUILDDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export SHELL=bash

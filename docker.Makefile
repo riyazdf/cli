@@ -32,28 +32,32 @@ build_shell_validate_image:
 
 # build executable using a container
 binary: build_docker_image
-	docker run --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make binary
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make binary
 
 build: binary
 
 # clean build artifacts using a container
 .PHONY: clean
 clean: build_docker_image
-	docker run --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make clean
+	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make clean
 
 # run go test
 .PHONY: test
 test: build_docker_image
-	docker run --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make test
+	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make test
 
 # build the CLI for multiple architectures using a container
 .PHONY: cross
 cross: build_cross_image
-	docker run --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) make cross
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) make cross
+
+.PHONY: cross-shell
+cross-shell: build_cross_image
+	docker run -ti --rm $(ENVVARS) $(MOUNTS) $(CROSS_IMAGE_NAME) bash
 
 .PHONY: watch
 watch: build_docker_image
-	docker run --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make watch
+	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make watch
 
 # start container in interactive mode for in-container development
 .PHONY: dev
