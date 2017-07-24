@@ -159,7 +159,7 @@ func PushTrustedReference(streams command.Streams, repoInfo *registry.Repository
 // us to).
 // If there are no delegation roles, we add to the targets role.
 func addTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.Target) error {
-	var signableRoles []string
+	var signableRoles []data.RoleName
 
 	// translate the full key names, which includes the GUN, into just the key IDs
 	allCanonicalKeyIDs := make(map[string]struct{})
@@ -183,7 +183,7 @@ func addTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.T
 		// We do not support signing any delegation role that isn't a direct child of the targets role.
 		// Also don't bother checking the keys if we can't add the target
 		// to this role due to path restrictions
-		if path.Dir(delegationRole.Name) != data.CanonicalTargetsRole || !delegationRole.CheckPaths(target.Name) {
+		if path.Dir(delegationRole.Name.String()) != data.CanonicalTargetsRole.String() || !delegationRole.CheckPaths(target.Name) {
 			continue
 		}
 
