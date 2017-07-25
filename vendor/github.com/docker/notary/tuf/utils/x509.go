@@ -26,6 +26,9 @@ import (
 // On regular RSA/ECDSA TUF keys, this is just the key ID.  On X509 RSA/ECDSA
 // TUF keys, this is the key ID of the public key part of the key in the leaf cert
 func CanonicalKeyID(k data.PublicKey) (string, error) {
+	if k == nil {
+		return "", errors.New("public key is nil")
+	}
 	switch k.Algorithm() {
 	case data.ECDSAx509Key, data.RSAx509Key:
 		return X509PublicKeyID(k)
@@ -252,9 +255,29 @@ func ParsePEMPublicKey(pubKeyBytes []byte) (data.PublicKey, error) {
 			return nil, fmt.Errorf("invalid certificate: %v", err)
 		}
 		return CertToKey(cert), nil
+	case "PUBLIC KEY":
+		keyType, err := keyTypeForPublicKey(pemBlock.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		return data.NewPublicKey(keyType, pemBlock.Bytes), nil
 	default:
-		return nil, fmt.Errorf("unsupported PEM block type %q, expected certificate", pemBlock.Type)
+		return nil, fmt.Errorf("unsupported PEM block type %q, expected CERTIFICATE or PUBLIC KEY", pemBlock.Type)
 	}
+}
+
+func keyTypeForPublicKey(pubKeyBytes []byte) (string, error) {
+	pub, err := x509.ParsePKIXPublicKey(pubKeyBytes)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse pem encoded public key: %v", err)
+	}
+	switch pub.(type) {
+	case *ecdsa.PublicKey:
+		return data.ECDSAKey, nil
+	case *rsa.PublicKey:
+		return data.RSAKey, nil
+	}
+	return "", fmt.Errorf("unknown public key format")
 }
 
 // ValidateCertificate returns an error if the certificate is not valid for notary
@@ -291,6 +314,20 @@ func ValidateCertificate(c *x509.Certificate, checkExpiry bool) error {
 		}
 	}
 	return nil
+}
+
+// GenerateKey returns a new private key using the provided algorithm or an
+// error detailing why the key could not be generated
+func GenerateKey(algorithm string) (data.PrivateKey, error) {
+	switch algorithm {
+	case data.RSAKey:
+		return GenerateRSAKey(rand.Reader, notary.MinRSABitSize)
+	case data.ECDSAKey:
+		return GenerateECDSAKey(rand.Reader)
+	case data.ED25519Key:
+		return GenerateED25519Key(rand.Reader)
+	}
+	return nil, fmt.Errorf("private key type not supported for key generation: %s", algorithm)
 }
 
 // GenerateRSAKey generates an RSA private key and returns a TUF PrivateKey
@@ -408,7 +445,7 @@ func blockType(k data.PrivateKey) (string, error) {
 }
 
 // KeyToPEM returns a PEM encoded key from a Private Key
-func KeyToPEM(privKey data.PrivateKey, role string) ([]byte, error) {
+func KeyToPEM(privKey data.PrivateKey, role data.RoleName, gun data.GUN) ([]byte, error) {
 	bt, err := blockType(privKey)
 	if err != nil {
 		return nil, err
@@ -416,9 +453,10 @@ func KeyToPEM(privKey data.PrivateKey, role string) ([]byte, error) {
 
 	headers := map[string]string{}
 	if role != "" {
-		headers = map[string]string{
-			"role": role,
-		}
+		headers["role"] = role.String()
+	}
+	if gun != "" {
+		headers["gun"] = gun.String()
 	}
 
 	block := &pem.Block{
@@ -432,7 +470,7 @@ func KeyToPEM(privKey data.PrivateKey, role string) ([]byte, error) {
 
 // EncryptPrivateKey returns an encrypted PEM key given a Privatekey
 // and a passphrase
-func EncryptPrivateKey(key data.PrivateKey, role, gun, passphrase string) ([]byte, error) {
+func EncryptPrivateKey(key data.PrivateKey, role data.RoleName, gun data.GUN, passphrase string) ([]byte, error) {
 	bt, err := blockType(key)
 	if err != nil {
 		return nil, err
@@ -453,26 +491,15 @@ func EncryptPrivateKey(key data.PrivateKey, role, gun, passphrase string) ([]byt
 	if encryptedPEMBlock.Headers == nil {
 		return nil, fmt.Errorf("unable to encrypt key - invalid PEM file produced")
 	}
-	encryptedPEMBlock.Headers["role"] = role
 
+	if role != "" {
+		encryptedPEMBlock.Headers["role"] = role.String()
+	}
 	if gun != "" {
-		encryptedPEMBlock.Headers["gun"] = gun
+		encryptedPEMBlock.Headers["gun"] = gun.String()
 	}
 
 	return pem.EncodeToMemory(encryptedPEMBlock), nil
-}
-
-// ReadRoleFromPEM returns the value from the role PEM header, if it exists
-func ReadRoleFromPEM(pemBytes []byte) string {
-	pemBlock, _ := pem.Decode(pemBytes)
-	if pemBlock == nil || pemBlock.Headers == nil {
-		return ""
-	}
-	role, ok := pemBlock.Headers["role"]
-	if !ok {
-		return ""
-	}
-	return role
 }
 
 // CertToKey transforms a single input certificate into its corresponding
@@ -527,8 +554,8 @@ func CertBundleToKey(leafCert *x509.Certificate, intCerts []*x509.Certificate) (
 	return newKey, nil
 }
 
-// NewCertificate returns an X509 Certificate following a template, given a GUN and validity interval.
-func NewCertificate(gun string, startTime, endTime time.Time) (*x509.Certificate, error) {
+// NewCertificate returns an X509 Certificate following a template, given a Common Name and validity interval.
+func NewCertificate(commonName string, startTime, endTime time.Time) (*x509.Certificate, error) {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -539,7 +566,7 @@ func NewCertificate(gun string, startTime, endTime time.Time) (*x509.Certificate
 	return &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName: gun,
+			CommonName: commonName,
 		},
 		NotBefore: startTime,
 		NotAfter:  endTime,
