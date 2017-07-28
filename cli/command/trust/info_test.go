@@ -254,3 +254,67 @@ func TestMatchReleasedSignatureFromTargets(t *testing.T) {
 	assert.Equal(t, releasedTgt.Name, outputRow.TagName)
 	assert.Equal(t, hex.EncodeToString(releasedTgt.Hashes[notary.SHA256]), outputRow.HashHex)
 }
+
+func TestGetSignerAndBaseRolesWithKeyIDs(t *testing.T) {
+	roles := []data.Role{
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key11"},
+			},
+			Name: "targets/alice",
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key21", "key22"},
+			},
+			Name: "targets/releases",
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key31"},
+			},
+			Name: data.CanonicalRootRole,
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key41"},
+			},
+			Name: data.CanonicalTargetsRole,
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key51"},
+			},
+			Name: data.CanonicalSnapshotRole,
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key61"},
+			},
+			Name: data.CanonicalTimestampRole,
+		},
+		{
+			RootRole: data.RootRole{
+				KeyIDs: []string{"key71", "key72"},
+			},
+			Name: "targets/bob",
+		},
+	}
+	expectedSignerRoleToKeyIDs := map[string][]string{
+		"alice": {"key11"},
+		"bob":   {"key71", "key72"},
+	}
+	expectedBaseRoleToKeyIDs := map[string][]string{
+		"root":  {"key31"},
+		"admin": {"key41"},
+	}
+
+	var roleWithSigs []client.RoleWithSignatures
+	for _, role := range roles {
+		roleWithSig := client.RoleWithSignatures{Role: role, Signatures: nil}
+		roleWithSigs = append(roleWithSigs, roleWithSig)
+	}
+	signerRoleToKeyIDs, baseRoleToKeyIDs := getSignerAndBaseRolesWithKeyIDs(roleWithSigs)
+	assert.Equal(t, signerRoleToKeyIDs, expectedSignerRoleToKeyIDs)
+	assert.Equal(t, baseRoleToKeyIDs, expectedBaseRoleToKeyIDs)
+}
