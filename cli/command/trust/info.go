@@ -131,6 +131,9 @@ func matchReleasedSignatures(allTargets []client.TargetSignedStruct) ([]trustTag
 		signatureRows = append(signatureRows, trustTagRow{targetKey, signers})
 	}
 	sort.Sort(signatureRows)
+	if len(signatureRows) == 0 {
+		return nil, fmt.Errorf("no signatures for image")
+	}
 	return signatureRows, nil
 }
 
