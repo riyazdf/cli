@@ -120,7 +120,7 @@ func TestMatchEmptySignatures(t *testing.T) {
 	emptyTgts := []client.TargetSignedStruct{}
 
 	matchedSigRows, err := matchReleasedSignatures(emptyTgts)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Empty(t, matchedSigRows)
 }
 
@@ -134,7 +134,7 @@ func TestMatchUnreleasedSignatures(t *testing.T) {
 	}
 
 	matchedSigRows, err := matchReleasedSignatures(unreleasedTgts)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Empty(t, matchedSigRows)
 }
 
