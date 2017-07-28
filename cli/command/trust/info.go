@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/docker/cli/cli"
@@ -27,6 +28,20 @@ type trustTagKey struct {
 type trustTagRow struct {
 	trustTagKey
 	Signers []string
+}
+
+type trustTagRowList []trustTagRow
+
+func (tagComparator trustTagRowList) Len() int {
+	return len(tagComparator)
+}
+
+func (tagComparator trustTagRowList) Less(i, j int) bool {
+	return tagComparator[i].TagName < tagComparator[j].TagName
+}
+
+func (tagComparator trustTagRowList) Swap(i, j int) {
+	tagComparator[i], tagComparator[j] = tagComparator[j], tagComparator[i]
 }
 
 // check if a role name is "released": either targets/releases or targets TUF roles
@@ -75,8 +90,12 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	// Retrieve released signatures and pretty print them
-	signatureRows, err := lookupSignatures(notaryRepo)
+	// Retrieve all released signatures, match them, and pretty print them
+	allSignedTargets, err := notaryRepo.GetAllTargetMetadataByName("")
+	if err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+	signatureRows, err := matchReleasedSignatures(allSignedTargets)
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
@@ -85,13 +104,10 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	return nil
 }
 
-func lookupSignatures(notaryRepo *client.NotaryRepository) ([]trustTagRow, error) {
-	signatureRows := []trustTagRow{}
-	allTargets, err := notaryRepo.GetAllTargetMetadataByName("")
-	if err != nil {
-		return nil, err
-	}
-
+// aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
+// signed into the "targets" or "targets/releases" role. Output is sorted by tag name
+func matchReleasedSignatures(allTargets []client.TargetSignedStruct) ([]trustTagRow, error) {
+	signatureRows := trustTagRowList{}
 	// do a first pass to get filter on tags signed into "targets" or "targets/releases"
 	releasedTargetRows := map[trustTagKey][]string{}
 	for _, tgt := range allTargets {
@@ -110,11 +126,11 @@ func lookupSignatures(notaryRepo *client.NotaryRepository) ([]trustTagRow, error
 		}
 	}
 
-	// compile the final output as a slice
+	// compile the final output as a sorted slice
 	for targetKey, signers := range releasedTargetRows {
 		signatureRows = append(signatureRows, trustTagRow{targetKey, signers})
 	}
-
+	sort.Sort(signatureRows)
 	return signatureRows, nil
 }
 
