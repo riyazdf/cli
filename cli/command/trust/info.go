@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const releasedRoleName = "owner"
+const releasedRoleName = "admin"
 
 type trustTagKey struct {
 	TagName string
@@ -101,7 +101,46 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 	printSignatures(cli, remote, signatureRows)
 
+	roleWithSigs, err := notaryRepo.ListRoles()
+	if err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+
+	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndBaseRolesWithKeyIDs(roleWithSigs)
+
+	fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
+	printRolesWithKeyIDs(cli, signerRoleToKeyIDs)
+
+	fmt.Fprintf(cli.Out(), "\nList of admins and their KeyIDs:\n\n")
+	printRolesWithKeyIDs(cli, adminRoleToKeyIDs)
+
 	return nil
+}
+
+// Extract signer keys and admin keys from the list of roles
+func getSignerAndBaseRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string][]string) {
+	signerRoleToKeyIDs := make(map[string][]string)
+	adminRoleToKeyIDs := make(map[string][]string)
+
+	for _, roleWithSig := range roleWithSigs {
+		switch roleWithSig.Name {
+		case trust.ReleasesRole, data.CanonicalSnapshotRole, data.CanonicalTimestampRole:
+			continue
+		case data.CanonicalRootRole, data.CanonicalTargetsRole:
+			adminRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
+		default:
+			signerRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
+		}
+	}
+	return signerRoleToKeyIDs, adminRoleToKeyIDs
+}
+
+// Print signer keys and base keys from the list of roles
+func printRolesWithKeyIDs(cli command.Cli, roleToKeyIDs map[string][]string) {
+	fmt.Fprintf(cli.Out(), "Name \t\t\t KeyIDs\n")
+	for k, v := range roleToKeyIDs {
+		fmt.Fprintf(cli.Out(), "%s\t\t%v\n", k, v)
+	}
 }
 
 // aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
