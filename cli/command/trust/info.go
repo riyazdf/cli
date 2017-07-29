@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
+	"github.com/docker/cli/cli/command/formatter"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/registry"
@@ -20,11 +21,13 @@ import (
 
 const releasedRoleName = "admin"
 
+// trustTagKey represents a unique signed tag and hex-encoded hash pair
 type trustTagKey struct {
 	TagName string
 	HashHex string
 }
 
+// trustTagRow encodes all human-consumable information for a signed tag, including signers
 type trustTagRow struct {
 	trustTagKey
 	Signers []string
@@ -99,7 +102,9 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
-	printSignatures(cli, remote, signatureRows)
+	if err := printSignatures(cli, signatureRows); err != nil {
+		return err
+	}
 
 	roleWithSigs, err := notaryRepo.ListRoles()
 	if err != nil {
@@ -145,7 +150,7 @@ func printRolesWithKeyIDs(cli command.Cli, roleToKeyIDs map[string][]string) {
 
 // aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
 // signed into the "targets" or "targets/releases" role. Output is sorted by tag name
-func matchReleasedSignatures(allTargets []client.TargetSignedStruct) ([]trustTagRow, error) {
+func matchReleasedSignatures(allTargets []client.TargetSignedStruct) (trustTagRowList, error) {
 	signatureRows := trustTagRowList{}
 	// do a first pass to get filter on tags signed into "targets" or "targets/releases"
 	releasedTargetRows := map[trustTagKey][]string{}
@@ -176,10 +181,20 @@ func matchReleasedSignatures(allTargets []client.TargetSignedStruct) ([]trustTag
 	return signatureRows, nil
 }
 
-// TODO(riyazdf): pretty print with ordered rows
-func printSignatures(cli command.Cli, imageName string, signatureRows []trustTagRow) {
-	fmt.Fprintf(cli.Out(), "SIGNATURE DATA FOR %s:\n\n", imageName)
-	for _, sigRow := range signatureRows {
-		fmt.Fprintf(cli.Out(), "%s\t%s\t\t%s\n", sigRow.TagName, sigRow.HashHex, sigRow.Signers)
+// pretty print with ordered rows
+func printSignatures(dockerCli command.Cli, signatureRows trustTagRowList) error {
+	trustTagCtx := formatter.Context{
+		Output: dockerCli.Out(),
+		Format: formatter.NewTrustTagFormat(),
 	}
+	// convert the formatted type before printing
+	formattedTags := []formatter.SignedTagInfo{}
+	for _, sigRow := range signatureRows {
+		formattedTags = append(formattedTags, formatter.SignedTagInfo{
+			Name:    sigRow.TagName,
+			Digest:  sigRow.HashHex,
+			Signers: sigRow.Signers,
+		})
+	}
+	return formatter.TrustTagWrite(trustTagCtx, formattedTags)
 }
