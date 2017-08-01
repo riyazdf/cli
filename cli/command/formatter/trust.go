@@ -125,9 +125,8 @@ func (c *signerInfoContext) Keys() string {
 			truncatedKeys = append(truncatedKeys, stringid.TruncateID(keyID))
 		}
 		return strings.Join(truncatedKeys, ",")
-	} else {
-		return strings.Join(c.s.Keys, ",")
 	}
+	return strings.Join(c.s.Keys, ",")
 }
 
 // Signer returns the name of the signer
