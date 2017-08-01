@@ -314,7 +314,7 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		roleWithSig := client.RoleWithSignatures{Role: role, Signatures: nil}
 		roleWithSigs = append(roleWithSigs, roleWithSig)
 	}
-	signerRoleToKeyIDs, baseRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
+	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
 	assert.Equal(t, signerRoleToKeyIDs, expectedSignerRoleToKeyIDs)
-	assert.Equal(t, baseRoleToKeyIDs, expectedAdminRoleToKeyIDs)
+	assert.Equal(t, adminRoleToKeyIDs, expectedAdminRoleToKeyIDs)
 }
