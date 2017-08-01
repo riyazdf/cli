@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	defaultTrustTagTableFormat      = "table {{.SignedTag}}\t{{.Digest}}\t{{.Signers}}"
-	signedTagNameHeader             = "SIGNED TAG"
-	trustedDigestHeader             = "DIGEST"
-	signersHeader                   = "SIGNERS"
-	defaultSignerAndKeysTableFormat = "table {{.Signer}}\t{{.Keys}}"
-	signerNameHeader                = "SIGNER"
-	keysHeader                      = "KEYS"
+	defaultTrustTagTableFormat   = "table {{.SignedTag}}\t{{.Digest}}\t{{.Signers}}"
+	signedTagNameHeader          = "SIGNED TAG"
+	trustedDigestHeader          = "DIGEST"
+	signersHeader                = "SIGNERS"
+	defaultSignerInfoTableFormat = "table {{.Signer}}\t{{.Keys}}"
+	signerNameHeader             = "SIGNER"
+	keysHeader                   = "KEYS"
 )
 
 // SignedTagInfo represents all formatted information needed to describe a signed tag:
@@ -40,9 +40,9 @@ func NewTrustTagFormat() Format {
 	return defaultTrustTagTableFormat
 }
 
-// NewSignerAndKeysTableFormat returns a Format for rendering a signer role info Context
-func NewSignerAndKeysTableFormat() Format {
-	return defaultSignerAndKeysTableFormat
+// NewSignerInfoFormat returns a Format for rendering a signer role info Context
+func NewSignerInfoFormat() Format {
+	return defaultSignerInfoTableFormat
 }
 
 // TrustTagWrite writes the context
