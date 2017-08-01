@@ -3,13 +3,18 @@ package formatter
 import (
 	"sort"
 	"strings"
+
+	"github.com/docker/docker/pkg/stringid"
 )
 
 const (
-	defaultTrustTagTableFormat = "table {{.SignedTag}}\t{{.Digest}}\t{{.Signers}}"
-	signedTagNameHeader        = "SIGNED TAG"
-	trustedDigestHeader        = "DIGEST"
-	signersHeader              = "SIGNERS"
+	defaultTrustTagTableFormat      = "table {{.SignedTag}}\t{{.Digest}}\t{{.Signers}}"
+	signedTagNameHeader             = "SIGNED TAG"
+	trustedDigestHeader             = "DIGEST"
+	signersHeader                   = "SIGNERS"
+	defaultSignerAndKeysTableFormat = "table {{.Signer}}\t{{.Keys}}"
+	signerNameHeader                = "SIGNER"
+	keysHeader                      = "KEYS"
 )
 
 // SignedTagInfo represents all formatted information needed to describe a signed tag:
@@ -22,9 +27,22 @@ type SignedTagInfo struct {
 	Signers []string
 }
 
+// SignerInfo represents all formatted information needed to describe a signer:
+// Name: name of the signer role
+// Keys: the keys associated with the signer
+type SignerInfo struct {
+	Name string
+	Keys []string
+}
+
 // NewTrustTagFormat returns a Format for rendering using a trusted tag Context
 func NewTrustTagFormat() Format {
 	return defaultTrustTagTableFormat
+}
+
+// NewSignerAndKeysTableFormat returns a Format for rendering a signer role info Context
+func NewSignerAndKeysTableFormat() Format {
+	return defaultSignerAndKeysTableFormat
 }
 
 // TrustTagWrite writes the context
@@ -67,4 +85,52 @@ func (c *trustTagContext) Digest() string {
 func (c *trustTagContext) Signers() string {
 	sort.Strings(c.s.Signers)
 	return strings.Join(c.s.Signers, ",")
+}
+
+// SignerInfoWrite writes the context
+func SignerInfoWrite(ctx Context, signerInfoList []SignerInfo) error {
+	render := func(format func(subContext subContext) error) error {
+		for _, signerInfo := range signerInfoList {
+			if err := format(&signerInfoContext{
+				trunc: ctx.Trunc,
+				s:     signerInfo,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	signerInfoCtx := signerInfoContext{}
+	signerInfoCtx.header = signerInfoHeaderContext{
+		"Signer": signerNameHeader,
+		"Keys":   keysHeader,
+	}
+	return ctx.Write(&signerInfoCtx, render)
+}
+
+type signerInfoHeaderContext map[string]string
+
+type signerInfoContext struct {
+	HeaderContext
+	trunc bool
+	s     SignerInfo
+}
+
+// Keys returns the sorted list of keys associated with the signer
+func (c *signerInfoContext) Keys() string {
+	sort.Strings(c.s.Keys)
+	truncatedKeys := []string{}
+	if c.trunc {
+		for _, keyID := range c.s.Keys {
+			truncatedKeys = append(truncatedKeys, stringid.TruncateID(keyID))
+		}
+		return strings.Join(truncatedKeys, ",")
+	} else {
+		return strings.Join(c.s.Keys, ",")
+	}
+}
+
+// Signer returns the name of the signer
+func (c *signerInfoContext) Signer() string {
+	return c.s.Name
 }
