@@ -114,10 +114,10 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
 
 	fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
-	printSignerAndKeys(cli, signerRoleToKeyIDs)
+	printSignerInfo(cli, signerRoleToKeyIDs)
 
 	fmt.Fprintf(cli.Out(), "\nList of admins and their KeyIDs:\n\n")
-	printSignerAndKeys(cli, adminRoleToKeyIDs)
+	printSignerInfo(cli, adminRoleToKeyIDs)
 
 	return nil
 }
@@ -191,10 +191,10 @@ func printSignatures(dockerCli command.Cli, signatureRows trustTagRowList) error
 	return formatter.TrustTagWrite(trustTagCtx, formattedTags)
 }
 
-func printSignerAndKeys(dockerCli command.Cli, roleToKeyIDs map[string][]string) error {
+func printSignerInfo(dockerCli command.Cli, roleToKeyIDs map[string][]string) error {
 	signerInfoCtx := formatter.Context{
 		Output: dockerCli.Out(),
-		Format: formatter.NewSignerAndKeysTableFormat(),
+		Format: formatter.NewSignerInfoFormat(),
 		Trunc:  true,
 	}
 	formattedSignerInfo := []formatter.SignerInfo{}
