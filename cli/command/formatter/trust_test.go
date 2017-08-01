@@ -155,3 +155,84 @@ func TestTrustTagContextEmptyWrite(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, emptyCase.expected, out.String())
 }
+
+func TestSignerInfoContextEmptyWrite(t *testing.T) {
+	emptyCase := struct {
+		context  Context
+		expected string
+	}{
+		Context{
+			Format: NewSignerInfoFormat(),
+		},
+		`SIGNER              KEYS
+`,
+	}
+	emptySignerInfo := []SignerInfo{}
+	out := bytes.NewBufferString("")
+	emptyCase.context.Output = out
+	err := SignerInfoWrite(emptyCase.context, emptySignerInfo)
+	assert.NoError(t, err)
+	assert.Equal(t, emptyCase.expected, out.String())
+}
+
+func TestSignerInfoContextWrite(t *testing.T) {
+	cases := []struct {
+		context  Context
+		expected string
+	}{
+		// Errors
+		{
+			Context{
+				Format: "{{InvalidFunction}}",
+			},
+			`Template parsing error: template: :1: function "InvalidFunction" not defined
+`,
+		},
+		{
+			Context{
+				Format: "{{nil}}",
+			},
+			`Template parsing error: template: :1:2: executing "" at <nil>: nil is not a command
+`,
+		},
+		// Table Format
+		{
+			Context{
+				Format: NewSignerInfoFormat(),
+				Trunc:  true,
+			},
+			`SIGNER              KEYS
+alice               key11,key12
+bob                 key21
+eve                 foobarbazqux,key31,key32
+`,
+		},
+		// No truncation
+		{
+			Context{
+				Format: NewSignerInfoFormat(),
+			},
+			`SIGNER              KEYS
+alice               key11,key12
+bob                 key21
+eve                 foobarbazquxquux,key31,key32
+`,
+		},
+	}
+
+	for _, testcase := range cases {
+		signerInfo := []SignerInfo{
+			{Name: "alice", Keys: []string{"key11", "key12"}},
+			{Name: "bob", Keys: []string{"key21"}},
+			{Name: "eve", Keys: []string{"key31", "key32", "foobarbazquxquux"}},
+		}
+		out := bytes.NewBufferString("")
+		testcase.context.Output = out
+		err := SignerInfoWrite(testcase.context, signerInfo)
+		if err != nil {
+			assert.EqualError(t, err, testcase.expected)
+		} else {
+			assert.Equal(t, testcase.expected, out.String())
+		}
+	}
+}

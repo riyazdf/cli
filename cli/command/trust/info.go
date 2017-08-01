@@ -111,19 +111,19 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndBaseRolesWithKeyIDs(roleWithSigs)
+	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
 
 	fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
-	printRolesWithKeyIDs(cli, signerRoleToKeyIDs)
+	printSignerInfo(cli, signerRoleToKeyIDs)
 
 	fmt.Fprintf(cli.Out(), "\nList of admins and their KeyIDs:\n\n")
-	printRolesWithKeyIDs(cli, adminRoleToKeyIDs)
+	printSignerInfo(cli, adminRoleToKeyIDs)
 
 	return nil
 }
 
 // Extract signer keys and admin keys from the list of roles
-func getSignerAndBaseRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string][]string) {
+func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string][]string) {
 	signerRoleToKeyIDs := make(map[string][]string)
 	adminRoleToKeyIDs := make(map[string][]string)
 
@@ -138,14 +138,6 @@ func getSignerAndBaseRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (
 		}
 	}
 	return signerRoleToKeyIDs, adminRoleToKeyIDs
-}
-
-// Print signer keys and base keys from the list of roles
-func printRolesWithKeyIDs(cli command.Cli, roleToKeyIDs map[string][]string) {
-	fmt.Fprintf(cli.Out(), "Name \t\t\t KeyIDs\n")
-	for k, v := range roleToKeyIDs {
-		fmt.Fprintf(cli.Out(), "%s\t\t%v\n", k, v)
-	}
 }
 
 // aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
@@ -197,4 +189,20 @@ func printSignatures(dockerCli command.Cli, signatureRows trustTagRowList) error
 		})
 	}
 	return formatter.TrustTagWrite(trustTagCtx, formattedTags)
+}
+
+func printSignerInfo(dockerCli command.Cli, roleToKeyIDs map[string][]string) error {
+	signerInfoCtx := formatter.Context{
+		Output: dockerCli.Out(),
+		Format: formatter.NewSignerInfoFormat(),
+		Trunc:  true,
+	}
+	formattedSignerInfo := []formatter.SignerInfo{}
+	for name, keyIDs := range roleToKeyIDs {
+		formattedSignerInfo = append(formattedSignerInfo, formatter.SignerInfo{
+			Name: name,
+			Keys: keyIDs,
+		})
+	}
+	return formatter.SignerInfoWrite(signerInfoCtx, formattedSignerInfo)
 }

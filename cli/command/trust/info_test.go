@@ -255,7 +255,7 @@ func TestMatchReleasedSignatureFromTargets(t *testing.T) {
 	assert.Equal(t, hex.EncodeToString(releasedTgt.Hashes[notary.SHA256]), outputRow.HashHex)
 }
 
-func TestGetSignerAndBaseRolesWithKeyIDs(t *testing.T) {
+func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 	roles := []data.Role{
 		{
 			RootRole: data.RootRole{
@@ -304,7 +304,7 @@ func TestGetSignerAndBaseRolesWithKeyIDs(t *testing.T) {
 		"alice": {"key11"},
 		"bob":   {"key71", "key72"},
 	}
-	expectedBaseRoleToKeyIDs := map[string][]string{
+	expectedAdminRoleToKeyIDs := map[string][]string{
 		"root":  {"key31"},
 		"admin": {"key41"},
 	}
@@ -314,7 +314,7 @@ func TestGetSignerAndBaseRolesWithKeyIDs(t *testing.T) {
 		roleWithSig := client.RoleWithSignatures{Role: role, Signatures: nil}
 		roleWithSigs = append(roleWithSigs, roleWithSig)
 	}
-	signerRoleToKeyIDs, baseRoleToKeyIDs := getSignerAndBaseRolesWithKeyIDs(roleWithSigs)
+	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
 	assert.Equal(t, signerRoleToKeyIDs, expectedSignerRoleToKeyIDs)
-	assert.Equal(t, baseRoleToKeyIDs, expectedBaseRoleToKeyIDs)
+	assert.Equal(t, adminRoleToKeyIDs, expectedAdminRoleToKeyIDs)
 }
