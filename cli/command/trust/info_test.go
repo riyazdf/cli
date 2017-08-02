@@ -77,6 +77,14 @@ func TestTrustInfo(t *testing.T) {
 		test.NewFakeCliWithOutput(&fakeClient{}, buf))
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
+
+	// Check for the signed tag headers
+	assert.Contains(t, buf.String(), "SIGNED TAG")
+	assert.Contains(t, buf.String(), "DIGEST")
+	assert.Contains(t, buf.String(), "SIGNERS")
+	// Check for the signer headers
+	assert.Contains(t, buf.String(), "SIGNER")
+	assert.Contains(t, buf.String(), "KEYS")
 }
 
 func TestTUFToSigner(t *testing.T) {
