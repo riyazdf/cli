@@ -84,7 +84,7 @@ func (c *trustTagContext) Digest() string {
 // Signers returns the sorted list of entities who signed this tag
 func (c *trustTagContext) Signers() string {
 	sort.Strings(c.s.Signers)
-	return strings.Join(c.s.Signers, ",")
+	return strings.Join(c.s.Signers, ", ")
 }
 
 // SignerInfoWrite writes the context
