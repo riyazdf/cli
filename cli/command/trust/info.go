@@ -197,12 +197,13 @@ func printSignerInfo(dockerCli command.Cli, roleToKeyIDs map[string][]string) er
 		Format: formatter.NewSignerInfoFormat(),
 		Trunc:  true,
 	}
-	formattedSignerInfo := []formatter.SignerInfo{}
+	formattedSignerInfo := formatter.SignerInfoList{}
 	for name, keyIDs := range roleToKeyIDs {
 		formattedSignerInfo = append(formattedSignerInfo, formatter.SignerInfo{
 			Name: name,
 			Keys: keyIDs,
 		})
 	}
+	sort.Sort(formattedSignerInfo)
 	return formatter.SignerInfoWrite(signerInfoCtx, formattedSignerInfo)
 }
