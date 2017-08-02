@@ -83,9 +83,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "DIGEST")
 	assert.Contains(t, buf.String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "List of admins and their KeyIDs:")
-	assert.Contains(t, buf.String(), "SIGNER")
-	assert.Contains(t, buf.String(), "KEYS")
+	assert.Contains(t, buf.String(), "Repository keys:")
 	// no delegations on this repo
 	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
 
@@ -117,10 +115,10 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "DIGEST")
 	assert.Contains(t, buf.String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "List of admins and their KeyIDs:")
 	assert.Contains(t, buf.String(), "List of signers and their KeyIDs:")
 	assert.Contains(t, buf.String(), "SIGNER")
 	assert.Contains(t, buf.String(), "KEYS")
+	assert.Contains(t, buf.String(), "Repository keys:")
 }
 
 func TestTUFToSigner(t *testing.T) {
@@ -348,9 +346,9 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		"alice": {"key11"},
 		"bob":   {"key71", "key72"},
 	}
-	expectedAdminRoleToKeyIDs := map[string][]string{
-		"root":  {"key31"},
-		"admin": {"key41"},
+	expectedAdminRoleToKeyIDs := map[string]string{
+		"Administrative Key": "key31",
+		"Pinning Key":        "key41",
 	}
 
 	var roleWithSigs []client.RoleWithSignatures
