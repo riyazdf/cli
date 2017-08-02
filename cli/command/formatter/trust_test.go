@@ -57,7 +57,7 @@ func TestTrustTag(t *testing.T) {
 					Signers: []string{"ashwini", "kyle", "riyaz"},
 				},
 			},
-			"ashwini,kyle,riyaz",
+			"ashwini, kyle, riyaz",
 			ctx.Signers,
 		},
 		// alphabetic signing on Signers
@@ -68,7 +68,7 @@ func TestTrustTag(t *testing.T) {
 					Signers: []string{"riyaz", "kyle", "ashwini"},
 				},
 			},
-			"ashwini,kyle,riyaz",
+			"ashwini, kyle, riyaz",
 			ctx.Signers,
 		},
 	}
@@ -110,7 +110,7 @@ func TestTrustTagContextWrite(t *testing.T) {
 			},
 			`SIGNED TAG          DIGEST              SIGNERS
 tag1                deadbeef            alice
-tag2                aaaaaaaa            alice,bob
+tag2                aaaaaaaa            alice, bob
 tag3                bbbbbbbb            
 `,
 		},
@@ -119,7 +119,7 @@ tag3                bbbbbbbb
 	for _, testcase := range cases {
 		signedTags := []SignedTagInfo{
 			{Name: "tag1", Digest: "deadbeef", Signers: []string{"alice"}},
-			{Name: "tag2", Digest: "aaaaaaaa", Signers: []string{"alice,bob"}},
+			{Name: "tag2", Digest: "aaaaaaaa", Signers: []string{"alice", "bob"}},
 			{Name: "tag3", Digest: "bbbbbbbb", Signers: []string{}},
 		}
 		out := bytes.NewBufferString("")
