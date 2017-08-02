@@ -119,23 +119,27 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 
 	// This will always have the root and targets information
-	fmt.Fprintf(cli.Out(), "\nList of admins and their KeyIDs:\n\n")
-	printSignerInfo(cli, adminRoleToKeyIDs)
+	fmt.Fprintf(cli.Out(), "\nRepository keys:\n\n")
+	for name, key := range adminRoleToKeyIDs {
+		fmt.Fprintf(cli.Out(), "%s:\t%s\n", name, key)
+	}
 
 	return nil
 }
 
 // Extract signer keys and admin keys from the list of roles
-func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string][]string) {
+func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string]string) {
 	signerRoleToKeyIDs := make(map[string][]string)
-	adminRoleToKeyIDs := make(map[string][]string)
+	adminRoleToKeyIDs := make(map[string]string)
 
 	for _, roleWithSig := range roleWithSigs {
 		switch roleWithSig.Name {
 		case trust.ReleasesRole, data.CanonicalSnapshotRole, data.CanonicalTimestampRole:
 			continue
-		case data.CanonicalRootRole, data.CanonicalTargetsRole:
-			adminRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
+		case data.CanonicalRootRole:
+			adminRoleToKeyIDs["Administrative Key"] = roleWithSig.KeyIDs[0]
+		case data.CanonicalTargetsRole:
+			adminRoleToKeyIDs["Pinning Key"] = roleWithSig.KeyIDs[0]
 		default:
 			signerRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
 		}
