@@ -112,10 +112,13 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 
 	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
+	// If we do not have additional signers, do not display
+	if len(signerRoleToKeyIDs) > 0 {
+		fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
+		printSignerInfo(cli, signerRoleToKeyIDs)
+	}
 
-	fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
-	printSignerInfo(cli, signerRoleToKeyIDs)
-
+	// This will always have the root and targets information
 	fmt.Fprintf(cli.Out(), "\nList of admins and their KeyIDs:\n\n")
 	printSignerInfo(cli, adminRoleToKeyIDs)
 
