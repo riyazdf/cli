@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"sort"
@@ -11,8 +10,6 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/command/formatter"
 	"github.com/docker/cli/cli/trust"
-	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/registry"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
@@ -75,7 +72,7 @@ func newInfoCommand(dockerCli command.Cli) *cobra.Command {
 }
 
 func lookupTrustInfo(cli command.Cli, remote string) error {
-	ref, err := reference.ParseNormalizedNamed(remote)
+	ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, remote)
 	if err != nil {
 		return err
 	}
@@ -89,16 +86,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		tag = ""
 	}
 
-	// Resolve the Repository name from fqn to RepositoryInfo
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return err
-	}
-
-	ctx := context.Background()
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "pull")
+	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, *authConfig, "pull")
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
