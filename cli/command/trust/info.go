@@ -16,6 +16,7 @@ import (
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -78,6 +79,15 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	if err != nil {
 		return err
 	}
+	var tag string
+	switch x := ref.(type) {
+	case reference.Canonical:
+		return errors.New("cannot display trust info for a digest reference")
+	case reference.NamedTagged:
+		tag = x.Tag()
+	default:
+		tag = ""
+	}
 
 	// Resolve the Repository name from fqn to RepositoryInfo
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
@@ -94,7 +104,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 
 	// Retrieve all released signatures, match them, and pretty print them
-	allSignedTargets, err := notaryRepo.GetAllTargetMetadataByName("")
+	allSignedTargets, err := notaryRepo.GetAllTargetMetadataByName(tag)
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
