@@ -83,7 +83,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "DIGEST")
 	assert.Contains(t, buf.String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "Repository keys:")
+	assert.Contains(t, buf.String(), "Repository keys for docker.io/library/alpine:")
 	// no delegations on this repo
 	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
 
@@ -101,7 +101,9 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "List of signers and their KeyIDs:")
 	assert.Contains(t, buf.String(), "SIGNER")
 	assert.Contains(t, buf.String(), "KEYS")
-	assert.Contains(t, buf.String(), "Repository keys:")
+	assert.Contains(t, buf.String(), "Repository keys for docker.io/dockerorcadev/trust-fixture:")
+	assert.Contains(t, buf.String(), "Signer Admin Key")
+	assert.Contains(t, buf.String(), "Root Pinning Key")
 }
 
 func TestTUFToSigner(t *testing.T) {
@@ -330,8 +332,8 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		"bob":   {"key71", "key72"},
 	}
 	expectedAdminRoleToKeyIDs := map[string]string{
-		"Administrative Key": "key31",
-		"Pinning Key":        "key41",
+		"Signer Admin Key": "key31",
+		"Root Pinning Key": "key41",
 	}
 
 	var roleWithSigs []client.RoleWithSignatures
