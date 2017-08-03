@@ -147,9 +147,9 @@ func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) 
 		case trust.ReleasesRole, data.CanonicalSnapshotRole, data.CanonicalTimestampRole:
 			continue
 		case data.CanonicalRootRole:
-			adminRoleToKeyIDs["Signer Admin Key"] = roleWithSig.KeyIDs[0]
+			adminRoleToKeyIDs["Signer Admin Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		case data.CanonicalTargetsRole:
-			adminRoleToKeyIDs["Root Pinning Key"] = roleWithSig.KeyIDs[0]
+			adminRoleToKeyIDs["Root Pinning Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		default:
 			signerRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
 		}

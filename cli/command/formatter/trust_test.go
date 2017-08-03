@@ -202,9 +202,9 @@ func TestSignerInfoContextWrite(t *testing.T) {
 				Trunc:  true,
 			},
 			`SIGNER              KEYS
-alice               key11,key12
+alice               key11, key12
 bob                 key21
-eve                 foobarbazqux,key31,key32
+eve                 foobarbazqux, key31, key32
 `,
 		},
 		// No truncation
@@ -213,9 +213,9 @@ eve                 foobarbazqux,key31,key32
 				Format: NewSignerInfoFormat(),
 			},
 			`SIGNER              KEYS
-alice               key11,key12
+alice               key11, key12
 bob                 key21
-eve                 foobarbazquxquux,key31,key32
+eve                 foobarbazquxquux, key31, key32
 `,
 		},
 	}
