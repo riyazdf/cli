@@ -187,10 +187,14 @@ func printSignatures(dockerCli command.Cli, signatureRows trustTagRowList) error
 	// convert the formatted type before printing
 	formattedTags := []formatter.SignedTagInfo{}
 	for _, sigRow := range signatureRows {
+		formattedSigners := sigRow.Signers
+		if len(formattedSigners) == 0 {
+			formattedSigners = append(formattedSigners, "(Repo Admin)")
+		}
 		formattedTags = append(formattedTags, formatter.SignedTagInfo{
 			Name:    sigRow.TagName,
 			Digest:  sigRow.HashHex,
-			Signers: sigRow.Signers,
+			Signers: formattedSigners,
 		})
 	}
 	return formatter.TrustTagWrite(trustTagCtx, formattedTags)
