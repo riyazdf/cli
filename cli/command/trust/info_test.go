@@ -90,6 +90,23 @@ func TestTrustInfo(t *testing.T) {
 	buf = new(bytes.Buffer)
 	cmd = newInfoCommand(
 		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+	cmd.SetArgs([]string{"alpine:3.5"})
+	assert.NoError(t, cmd.Execute())
+	assert.Contains(t, buf.String(), "SIGNED TAG")
+	assert.Contains(t, buf.String(), "DIGEST")
+	assert.Contains(t, buf.String(), "SIGNERS")
+	// Check for the signer headers
+	assert.Contains(t, buf.String(), "List of admins and their KeyIDs:")
+	assert.Contains(t, buf.String(), "SIGNER")
+	assert.Contains(t, buf.String(), "KEYS")
+	assert.Contains(t, buf.String(), "3.5")
+	// no delegations on this repo
+	assert.NotContains(t, buf.String(), "3.6")
+	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
+
+	buf = new(bytes.Buffer)
+	cmd = newInfoCommand(
+		test.NewFakeCliWithOutput(&fakeClient{}, buf))
 	cmd.SetArgs([]string{"dockerorcadev/trust-fixture"})
 	assert.NoError(t, cmd.Execute())
 
