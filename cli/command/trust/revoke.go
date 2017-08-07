@@ -133,15 +133,11 @@ func revokeAllSigs(cli command.Cli, ref reference.Named) error {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	fmt.Printf("notary repo: %+v", notaryRepo)
+	// Delete trust data for this repo
+	if err := client.DeleteTrustData(trust.TrustDirectory(), notaryRepo.GetGUN(), server, tr, deleteRemote); err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
 
-	// Use function below to purge
-	client.DeleteTrustData(
-		notaryRepo.baseDir,
-		notaryRepo.gun,
-		notaryRepo.baseURL,
-		tr,
-		deleteRemote)
-
-	return nil
+	// Publish change
+	return notaryRepo.Publish()
 }
