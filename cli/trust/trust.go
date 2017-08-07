@@ -36,7 +36,8 @@ var (
 	ReleasesRole = data.RoleName(path.Join(data.CanonicalTargetsRole.String(), "releases"))
 )
 
-func trustDirectory() string {
+// TrustDirectory returns the baseDir for use with notary
+func TrustDirectory() string {
 	return filepath.Join(cliconfig.Dir(), "trust")
 }
 
@@ -165,7 +166,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	if err != nil {
 		return nil, err
 	}
-	tr, err := GetTransport(repoInfo, server, authConfig, actions)
+	tr, err := GetTransport(repoInfo, server, authConfig, actions...)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +178,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 // transport providing authentication support.
 func GetNotaryRepositoryWithTransport(streams command.Streams, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
 	return client.NewFileCachedNotaryRepository(
-		trustDirectory(),
+		TrustDirectory(),
 		data.GUN(repoInfo.Name.Name()),
 		server,
 		tr,
