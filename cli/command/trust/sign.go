@@ -42,10 +42,12 @@ func signImage(cli command.Cli, image, tag string) error {
 		switch err.(type) {
 		case client.ErrRepoNotInitialized, client.ErrRepositoryNotExist:
 			userRole := data.RoleName(path.Join(data.CanonicalTargetsRole.String(), authConfig.Username))
-			if err := initNotaryRepoWithSigners(cli, notaryRepo, userRole); err != nil {
+			if err := initNotaryRepoWithSigners(notaryRepo, userRole); err != nil {
 				return trust.NotaryError(ref.Name(), err)
 			}
+
 			fmt.Fprintf(cli.Out(), "Created signer: %s\n", authConfig.Username)
+			fmt.Fprintf(cli.Out(), "Finished initializing %q\n", notaryRepo.GetGUN().String())
 		default:
 			return trust.NotaryError(repoInfo.Name.Name(), err)
 		}
@@ -55,52 +57,57 @@ func signImage(cli command.Cli, image, tag string) error {
 	return nil
 }
 
-func initNotaryRepoWithSigners(cli command.Cli, notaryRepo *client.NotaryRepository, newSigner data.RoleName) error {
-	keys := notaryRepo.CryptoService.ListKeys(data.CanonicalRootRole)
-	var err error
-	var rootKeyID string
-	// always select the first root key
-	if len(keys) > 0 {
-		sort.Strings(keys)
-		rootKeyID = keys[0]
-	} else {
-		rootPublicKey, err := notaryRepo.CryptoService.Create(data.CanonicalRootRole, "", data.ECDSAKey)
-		if err != nil {
-			return err
-		}
-		rootKeyID = rootPublicKey.ID()
+func initNotaryRepoWithSigners(notaryRepo *client.NotaryRepository, newSigner data.RoleName) error {
+	rootKey, err := getOrGenerateNotaryKey(notaryRepo, data.CanonicalRootRole)
+	if err != nil {
+		return err
 	}
+	rootKeyID := rootKey.ID()
 
 	// Initialize the notary repository with a remotely managed snapshot key
 	if err := notaryRepo.Initialize([]string{rootKeyID}, data.CanonicalSnapshotRole); err != nil {
-		return trust.NotaryError(notaryRepo.GetGUN().String(), err)
+		return err
 	}
 
-	// Check if we have a user key
-	var signerKey data.PublicKey
-	signerKeys := notaryRepo.CryptoService.ListKeys(newSigner)
-	if len(signerKeys) > 0 {
-		sort.Strings(signerKeys)
-		signerKeyID := signerKeys[0]
-		signerKey = notaryRepo.CryptoService.GetKey(signerKeyID)
-	} else {
-		signerKey, err = notaryRepo.CryptoService.Create(newSigner, "", data.ECDSAKey)
+	signerKey, err := getOrGenerateNotaryKey(notaryRepo, newSigner)
+	if err != nil {
+		return err
+	}
+	addStagedSigner(notaryRepo, newSigner, []data.PublicKey{signerKey})
+
+	return notaryRepo.Publish()
+}
+
+// generates an ECDSA key without a GUN for the specified role
+func getOrGenerateNotaryKey(notaryRepo *client.NotaryRepository, role data.RoleName) (data.PublicKey, error) {
+	keys := notaryRepo.CryptoService.ListKeys(role)
+	var err error
+	var key data.PublicKey
+	// always select the first key by ID
+	if len(keys) > 0 {
+		sort.Strings(keys)
+		keyID := keys[0]
+		privKey, _, err := notaryRepo.CryptoService.GetPrivateKey(keyID)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		key = data.PublicKeyFromPrivate(privKey)
+	} else {
+		key, err = notaryRepo.CryptoService.Create(role, "", data.ECDSAKey)
+		if err != nil {
+			return nil, err
 		}
 	}
+	return key, nil
+}
 
+// stages changes to add a signer with the specified name and key(s).  Adds to targets/<name> and targets/releases
+func addStagedSigner(notaryRepo *client.NotaryRepository, newSigner data.RoleName, signerKeys []data.PublicKey) {
 	// create targets/<username>
-	notaryRepo.AddDelegationRoleAndKeys(newSigner, []data.PublicKey{signerKey})
+	notaryRepo.AddDelegationRoleAndKeys(newSigner, signerKeys)
 	notaryRepo.AddDelegationPaths(newSigner, []string{""})
 
 	// create targets/releases
-	notaryRepo.AddDelegationRoleAndKeys(trust.ReleasesRole, []data.PublicKey{signerKey})
+	notaryRepo.AddDelegationRoleAndKeys(trust.ReleasesRole, signerKeys)
 	notaryRepo.AddDelegationPaths(trust.ReleasesRole, []string{""})
-
-	if err := notaryRepo.Publish(); err != nil {
-		return err
-	}
-	fmt.Fprintf(cli.Out(), "Finished initializing %q\n", notaryRepo.GetGUN().String())
-	return nil
 }
