@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/registry"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ func askConfirm(input io.Reader) bool {
 }
 
 func revokeTrust(cli command.Cli, remote string) error {
-	ref, err := reference.ParseNormalizedNamed(remote)
+	ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, remote)
 	if err != nil {
 		return err
 	}
@@ -50,24 +50,20 @@ func revokeTrust(cli command.Cli, remote string) error {
 	case reference.Digested, reference.Canonical:
 		return fmt.Errorf("Cannot remove signature for digest")
 	case reference.NamedTagged:
-		return revokeSingleSig(cli, ref.(reference.NamedTagged))
+		if err := revokeSingleSig(cli, ref.(reference.NamedTagged), repoInfo, *authConfig); err != nil {
+			return fmt.Errorf("Could not remove signature")
+		}
+		return nil
 	default:
-		return revokeAllSigs(cli, ref)
+		if err := revokeAllSigs(cli, ref, repoInfo, *authConfig); err != nil {
+			return fmt.Errorf("Could not remove all signatures")
+		}
+		return nil
 	}
 }
 
-func revokeSingleSig(cli command.Cli, ref reference.NamedTagged) error {
+func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
 	tag := ref.Tag()
-
-	// Resolve the Repository name from fqn to RepositoryInfo
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return err
-	}
-
-	ctx := context.Background()
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-
 	// TODO(riyazdf): can we allow for a memory changelist?
 	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "push")
 	if err != nil {
@@ -94,16 +90,13 @@ func revokeSingleSig(cli command.Cli, ref reference.NamedTagged) error {
 	}
 
 	// Publish change
-	return notaryRepo.Publish()
+	if err := notaryRepo.Publish(); err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+	return nil
 }
 
-func revokeAllSigs(cli command.Cli, ref reference.Named) error {
-	// Resolve the Repository name from fqn to RepositoryInfo
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return err
-	}
-
+func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
 	in := os.Stdin
 	fmt.Printf(
 		"Please confirm you would like to delete all signature data for: %s (y/n)\n",
@@ -116,8 +109,6 @@ func revokeAllSigs(cli command.Cli, ref reference.Named) error {
 		return nil
 	}
 
-	ctx := context.Background()
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
 	server, err := trust.Server(repoInfo.Index)
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
@@ -139,5 +130,9 @@ func revokeAllSigs(cli command.Cli, ref reference.Named) error {
 	}
 
 	// Publish change
-	return notaryRepo.Publish()
+	if err := notaryRepo.Publish(); err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+
+	return nil
 }
