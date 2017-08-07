@@ -3,7 +3,11 @@ package trust
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
+	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 
 	"github.com/docker/cli/cli"
@@ -26,6 +30,17 @@ func newRevokeCommand(dockerCli command.Cli) *cobra.Command {
 	return cmd
 }
 
+func askConfirm(input io.Reader) bool {
+	var res string
+	if _, err := fmt.Fscanln(input, &res); err != nil {
+		return false
+	}
+	if strings.EqualFold(res, "y") || strings.EqualFold(res, "yes") {
+		return true
+	}
+	return false
+}
+
 func revokeTrust(cli command.Cli, remote string) error {
 	ref, err := reference.ParseNormalizedNamed(remote)
 	if err != nil {
@@ -33,7 +48,7 @@ func revokeTrust(cli command.Cli, remote string) error {
 	}
 	switch ref.(type) {
 	case reference.Digested, reference.Canonical:
-		return fmt.Errorf("cannot remove signature for digest")
+		return fmt.Errorf("Cannot remove signature for digest")
 	case reference.NamedTagged:
 		return revokeSingleSig(cli, ref.(reference.NamedTagged))
 	default:
@@ -89,18 +104,44 @@ func revokeAllSigs(cli command.Cli, ref reference.Named) error {
 		return err
 	}
 
+	in := os.Stdin
+	fmt.Printf(
+		"Please confirm you would like to delete all signature data for: %s (y/n)\n",
+		repoInfo.Name,
+	)
+	// TODO: Also add force (-y) flag
+	deleteRemote := askConfirm(in)
+	if !deleteRemote {
+		fmt.Println("\nAborting action.")
+		return nil
+	}
+
 	ctx := context.Background()
 	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "*")
+	server, err := trust.Server(repoInfo.Index)
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
-	// TODO: make interactive prompt and ask for (yes).  Also add force (-y) flag
-	fmt.Printf("Please confirm you would like to delete all signature data for: %s (y/n)\n", notaryRepo.GetGUN().String())
+
+	tr, err := trust.GetTransport(repoInfo, server, authConfig, "*")
+	if err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+
+	notaryRepo, err := trust.GetNotaryRepositoryWithTransport(cli, repoInfo, server, tr)
+	if err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+
+	fmt.Printf("notary repo: %+v", notaryRepo)
 
 	// Use function below to purge
-	// client.DeleteTrustData(baseDir string, gun data.GUN, URL string, rt http.RoundTripper, deleteRemote bool)
+	client.DeleteTrustData(
+		notaryRepo.baseDir,
+		notaryRepo.gun,
+		notaryRepo.baseURL,
+		tr,
+		deleteRemote)
 
 	return nil
 }
