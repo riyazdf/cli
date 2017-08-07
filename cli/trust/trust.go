@@ -83,14 +83,8 @@ func (scs simpleCredentialStore) RefreshToken(u *url.URL, service string) string
 func (scs simpleCredentialStore) SetRefreshToken(*url.URL, string, string) {
 }
 
-// GetNotaryRepository returns a NotaryRepository which stores all the
-// information needed to operate on a notary repository.
-// It creates an HTTP transport providing authentication support.
-func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
-	server, err := Server(repoInfo.Index)
-	if err != nil {
-		return nil, err
-	}
+// GetTransport returns an HTTP transport providing authentication support.
+func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig types.AuthConfig, actions ...string) (http.RoundTripper, error) {
 
 	var cfg = tlsconfig.ClientDefault()
 	cfg.InsecureSkipVerify = !repoInfo.Index.Secure
@@ -105,7 +99,6 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	if err := registry.ReadCertsDirectory(cfg, certDir); err != nil {
 		return nil, err
 	}
-
 	base := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
@@ -117,7 +110,6 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 		TLSClientConfig:     cfg,
 		DisableKeepAlives:   true,
 	}
-
 	// Skip configuration headers since request is not going to Docker daemon
 	modifiers := registry.DockerHeaders(command.UserAgent(), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
@@ -146,7 +138,6 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 			return nil, err
 		}
 	}
-
 	scope := auth.RepositoryScope{
 		Repository: repoInfo.Name.Name(),
 		Actions:    actions,
@@ -162,8 +153,29 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	tokenHandler := auth.NewTokenHandlerWithOptions(tokenHandlerOptions)
 	basicHandler := auth.NewBasicHandler(creds)
 	modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
-	tr := transport.NewTransport(base, modifiers...)
+	return transport.NewTransport(base, modifiers...), nil
 
+}
+
+// GetNotaryRepository returns a NotaryRepository which stores all the
+// information needed to operate on a notary repository.
+// It creates an HTTP transport providing authentication support.
+func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
+	server, err := Server(repoInfo.Index)
+	if err != nil {
+		return nil, err
+	}
+	tr, err := GetTransport(repoInfo, server, authConfig, actions)
+	if err != nil {
+		return nil, err
+	}
+	return GetNotaryRepositoryWithTransport(streams, repoInfo, server, tr)
+}
+
+// GetNotaryRepositoryWithTransport returns a NotaryRepository which strores
+// all the information needed to operate on a notary repositary, given an HTTP
+// transport providing authentication support.
+func GetNotaryRepositoryWithTransport(streams command.Streams, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
 	return client.NewFileCachedNotaryRepository(
 		trustDirectory(),
 		data.GUN(repoInfo.Name.Name()),
