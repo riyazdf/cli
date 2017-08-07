@@ -43,7 +43,7 @@ func TestTrustInfoErrors(t *testing.T) {
 		{
 			name:          "nonexistent-reg",
 			args:          []string{"nonexistent-reg-name.io/image"},
-			expectedError: "no such host",
+			expectedError: "No signatures or cannot access nonexistent-reg-name.io/image",
 		},
 		{
 			name:          "invalid-img-reference",
@@ -53,12 +53,12 @@ func TestTrustInfoErrors(t *testing.T) {
 		{
 			name:          "unsigned-img-reference",
 			args:          []string{"riyaz/unsigned-img"},
-			expectedError: "notary.docker.io does not have trust data for docker.io/riyaz/unsigned-img",
+			expectedError: "No signatures or cannot access riyaz/unsigned-img",
 		},
 		{
 			name:          "nonexistent-img-reference",
 			args:          []string{"riyaz/nonexistent-img"},
-			expectedError: "you are not authorized to perform this operation: server returned 401",
+			expectedError: "No signatures or cannot access riyaz/nonexistent-img",
 		},
 	}
 	for _, tc := range testCases {
@@ -165,8 +165,7 @@ func TestMatchEmptySignatures(t *testing.T) {
 	// first try empty targets
 	emptyTgts := []client.TargetSignedStruct{}
 
-	matchedSigRows, err := matchReleasedSignatures(emptyTgts)
-	assert.Error(t, err)
+	matchedSigRows := matchReleasedSignatures(emptyTgts)
 	assert.Empty(t, matchedSigRows)
 }
 
@@ -179,8 +178,7 @@ func TestMatchUnreleasedSignatures(t *testing.T) {
 		unreleasedTgts = append(unreleasedTgts, client.TargetSignedStruct{Role: mockDelegationRoleWithName(unreleasedRole), Target: tgt})
 	}
 
-	matchedSigRows, err := matchReleasedSignatures(unreleasedTgts)
-	assert.Error(t, err)
+	matchedSigRows := matchReleasedSignatures(unreleasedTgts)
 	assert.Empty(t, matchedSigRows)
 }
 
@@ -198,8 +196,7 @@ func TestMatchOneReleasedSingleSignature(t *testing.T) {
 		oneReleasedTgt = append(oneReleasedTgt, client.TargetSignedStruct{Role: mockDelegationRoleWithName(unreleasedRole), Target: unreleasedTgt})
 	}
 
-	matchedSigRows, err := matchReleasedSignatures(oneReleasedTgt)
-	assert.NoError(t, err)
+	matchedSigRows := matchReleasedSignatures(oneReleasedTgt)
 	assert.Len(t, matchedSigRows, 1)
 
 	outputRow := matchedSigRows[0]
@@ -224,8 +221,7 @@ func TestMatchOneReleasedMultiSignature(t *testing.T) {
 		oneReleasedTgt = append(oneReleasedTgt, client.TargetSignedStruct{Role: mockDelegationRoleWithName(unreleasedRole), Target: releasedTgt})
 	}
 
-	matchedSigRows, err := matchReleasedSignatures(oneReleasedTgt)
-	assert.NoError(t, err)
+	matchedSigRows := matchReleasedSignatures(oneReleasedTgt)
 	assert.Len(t, matchedSigRows, 1)
 
 	outputRow := matchedSigRows[0]
@@ -264,8 +260,7 @@ func TestMatchMultiReleasedMultiSignature(t *testing.T) {
 	// targets/c only signs off on the last target (target-c):
 	multiReleasedTgts = append(multiReleasedTgts, client.TargetSignedStruct{Role: mockDelegationRoleWithName("targets/c"), Target: targetC})
 
-	matchedSigRows, err := matchReleasedSignatures(multiReleasedTgts)
-	assert.NoError(t, err)
+	matchedSigRows := matchReleasedSignatures(multiReleasedTgts)
 	assert.Len(t, matchedSigRows, 3)
 
 	// note that the output is sorted by tag name, so we can reliably index to validate data:
@@ -291,8 +286,7 @@ func TestMatchReleasedSignatureFromTargets(t *testing.T) {
 	// make and append the "released" target to our mock input
 	releasedTgt := client.Target{Name: "released", Hashes: data.Hashes{notary.SHA256: []byte("released-hash")}}
 	oneReleasedTgt = append(oneReleasedTgt, client.TargetSignedStruct{Role: mockDelegationRoleWithName(data.CanonicalTargetsRole.String()), Target: releasedTgt})
-	matchedSigRows, err := matchReleasedSignatures(oneReleasedTgt)
-	assert.NoError(t, err)
+	matchedSigRows := matchReleasedSignatures(oneReleasedTgt)
 	assert.Len(t, matchedSigRows, 1)
 	outputRow := matchedSigRows[0]
 	// Empty signers because "targets" doesn't show up

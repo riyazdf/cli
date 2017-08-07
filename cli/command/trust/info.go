@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/command/formatter"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
@@ -94,19 +96,20 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	// Retrieve all released signatures, match them, and pretty print them
 	allSignedTargets, err := notaryRepo.GetAllTargetMetadataByName(tag)
 	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+		logrus.Debug(trust.NotaryError(ref.Name(), err))
+		// print an empty table if we don't have signed targets, but have an initialized notary repo
+		if !strings.Contains(err.Error(), "No valid trust data for") {
+			return fmt.Errorf("No signatures or cannot access %s", remote)
+		}
 	}
-	signatureRows, err := matchReleasedSignatures(allSignedTargets)
-	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
-	}
+	signatureRows := matchReleasedSignatures(allSignedTargets)
 	if err := printSignatures(cli, signatureRows); err != nil {
 		return err
 	}
 
 	roleWithSigs, err := notaryRepo.ListRoles()
 	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+		return fmt.Errorf("No signers for %s", remote)
 	}
 
 	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
@@ -147,7 +150,7 @@ func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) 
 
 // aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
 // signed into the "targets" or "targets/releases" role. Output is sorted by tag name
-func matchReleasedSignatures(allTargets []client.TargetSignedStruct) (trustTagRowList, error) {
+func matchReleasedSignatures(allTargets []client.TargetSignedStruct) trustTagRowList {
 	signatureRows := trustTagRowList{}
 	// do a first pass to get filter on tags signed into "targets" or "targets/releases"
 	releasedTargetRows := map[trustTagKey][]string{}
@@ -172,10 +175,7 @@ func matchReleasedSignatures(allTargets []client.TargetSignedStruct) (trustTagRo
 		signatureRows = append(signatureRows, trustTagRow{targetKey, signers})
 	}
 	sort.Sort(signatureRows)
-	if len(signatureRows) == 0 {
-		return nil, fmt.Errorf("no signatures for image")
-	}
-	return signatureRows, nil
+	return signatureRows
 }
 
 // pretty print with ordered rows
