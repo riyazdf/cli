@@ -94,20 +94,21 @@ func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *regis
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	fmt.Println("Successfully deleted signature")
+	fmt.Fprintf(cli.Out(), "Successfully deleted signature")
 	return nil
 }
 
 func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
 	in := os.Stdin
-	fmt.Printf(
+	fmt.Fprintf(
+		cli.Out(),
 		"Please confirm you would like to delete all signature data for: %s (y/n)\n",
 		repoInfo.Name,
 	)
 	// TODO: Also add force (-y) flag
 	deleteRemote := askConfirm(in)
 	if !deleteRemote {
-		fmt.Println("\nAborting action.")
+		fmt.Fprintf(cli.Out(), "\nAborting action.\n")
 		return nil
 	}
 
@@ -131,6 +132,6 @@ func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.Repo
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	fmt.Println("Successfully deleted all signature data")
+	fmt.Fprintf(cli.Out(), "Successfully deleted all signature data")
 	return nil
 }
