@@ -11,6 +11,7 @@ import (
 	"github.com/docker/notary/client/changelist"
 	"github.com/docker/notary/tuf/data"
 
+	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/docker/pkg/testutil"
@@ -60,6 +61,11 @@ func TestTrustSignErrors(t *testing.T) {
 			expectedError: "maximum number of passphrase attempts exceeded",
 		},
 	}
+	// change to a tmpdir
+	tmpDir, err := ioutil.TempDir("", "docker-sign-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+	config.SetDir(tmpDir)
 	for _, tc := range testCases {
 		buf := new(bytes.Buffer)
 		cmd := newSignCommand(
