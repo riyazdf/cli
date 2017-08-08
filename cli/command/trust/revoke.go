@@ -48,16 +48,32 @@ func revokeTrust(cli command.Cli, remote string) error {
 	}
 	switch ref.(type) {
 	case reference.Digested, reference.Canonical:
-		return fmt.Errorf("Cannot remove signature for digest")
+		return fmt.Errorf("cannot remove signature for digest")
 	case reference.NamedTagged:
+
 		if err := revokeSingleSig(cli, ref.(reference.NamedTagged), repoInfo, *authConfig); err != nil {
-			return fmt.Errorf("Could not remove signature")
+			return fmt.Errorf("could not remove signature for %s: %s", remote, err)
 		}
+		fmt.Fprintf(cli.Out(), "Successfully deleted signature for %s\n", remote)
 		return nil
 	default:
-		if err := revokeAllSigs(cli, ref, repoInfo, *authConfig); err != nil {
-			return fmt.Errorf("Could not remove all signatures")
+		in := os.Stdin
+		fmt.Fprintf(
+			cli.Out(),
+			"Please confirm you would like to delete all signature data for %s? (y/n)\n",
+			remote,
+		)
+		// TODO: Also add force (-y) flag
+		deleteRemote := askConfirm(in)
+		if !deleteRemote {
+			fmt.Fprintf(cli.Out(), "\nAborting action.\n")
+			return nil
 		}
+		if err := revokeAllSigs(cli, ref, repoInfo, *authConfig); err != nil {
+			return fmt.Errorf("could not remove all signatures for %s: %s", remote, err)
+		}
+
+		fmt.Fprintf(cli.Out(), "Successfully deleted all signature data for %s\n", remote)
 		return nil
 	}
 }
@@ -94,23 +110,10 @@ func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *regis
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	fmt.Fprintf(cli.Out(), "Successfully deleted signature")
 	return nil
 }
 
 func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
-	in := os.Stdin
-	fmt.Fprintf(
-		cli.Out(),
-		"Please confirm you would like to delete all signature data for: %s (y/n)\n",
-		repoInfo.Name,
-	)
-	// TODO: Also add force (-y) flag
-	deleteRemote := askConfirm(in)
-	if !deleteRemote {
-		fmt.Fprintf(cli.Out(), "\nAborting action.\n")
-		return nil
-	}
 
 	server, err := trust.Server(repoInfo.Index)
 	if err != nil {
@@ -128,10 +131,9 @@ func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.Repo
 	}
 
 	// Delete trust data for this repo
-	if err := client.DeleteTrustData(trust.GetTrustDirectoryName(), notaryRepo.GetGUN(), server, tr, deleteRemote); err != nil {
+	if err := client.DeleteTrustData(trust.GetTrustDirectoryName(), notaryRepo.GetGUN(), server, tr, true); err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	fmt.Fprintf(cli.Out(), "Successfully deleted all signature data")
 	return nil
 }
