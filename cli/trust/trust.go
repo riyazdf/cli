@@ -174,7 +174,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 }
 
 // GetNotaryRepositoryWithTransport returns a NotaryRepository which strores
-// all the information needed to operate on a notary repositary, given an HTTP
+// all the information needed to operate on a notary repository, given an HTTP
 // transport providing authentication support.
 func GetNotaryRepositoryWithTransport(streams command.Streams, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
 	return client.NewFileCachedNotaryRepository(
