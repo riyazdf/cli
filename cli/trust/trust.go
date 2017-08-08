@@ -100,6 +100,7 @@ func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig t
 	if err := registry.ReadCertsDirectory(cfg, certDir); err != nil {
 		return nil, err
 	}
+
 	base := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
@@ -111,6 +112,7 @@ func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig t
 		TLSClientConfig:     cfg,
 		DisableKeepAlives:   true,
 	}
+
 	// Skip configuration headers since request is not going to Docker daemon
 	modifiers := registry.DockerHeaders(command.UserAgent(), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
@@ -139,6 +141,7 @@ func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig t
 			return nil, err
 		}
 	}
+
 	scope := auth.RepositoryScope{
 		Repository: repoInfo.Name.Name(),
 		Actions:    actions,
@@ -161,7 +164,7 @@ func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig t
 // GetNotaryRepository returns a NotaryRepository which stores all the
 // information needed to operate on a notary repository.
 // It creates an HTTP transport providing authentication support.
-func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
+func GetNotaryRepository(streams command.Cli, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
 	server, err := Server(repoInfo.Index)
 	if err != nil {
 		return nil, err
@@ -176,7 +179,8 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 // GetNotaryRepositoryWithTransport returns a NotaryRepository which strores
 // all the information needed to operate on a notary repository, given an HTTP
 // transport providing authentication support.
-func GetNotaryRepositoryWithTransport(streams command.Streams, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
+func GetNotaryRepositoryWithTransport(streams command.Cli, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
+
 	return client.NewFileCachedNotaryRepository(
 		GetTrustDirectoryName(),
 		data.GUN(repoInfo.Name.Name()),
@@ -186,7 +190,7 @@ func GetNotaryRepositoryWithTransport(streams command.Streams, repoInfo *registr
 		trustpinning.TrustPinConfig{})
 }
 
-func getPassphraseRetriever(streams command.Streams) notary.PassRetriever {
+func getPassphraseRetriever(streams command.Cli) notary.PassRetriever {
 	aliasMap := map[string]string{
 		"root":     "root",
 		"snapshot": "repository",
