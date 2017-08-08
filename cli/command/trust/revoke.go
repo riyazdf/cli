@@ -127,7 +127,7 @@ func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.Repo
 	}
 
 	// Delete trust data for this repo
-	if err := client.DeleteTrustData(trust.TrustDirectory(), notaryRepo.GetGUN(), server, tr, deleteRemote); err != nil {
+	if err := client.DeleteTrustData(trust.GetTrustDirectoryName(), notaryRepo.GetGUN(), server, tr, deleteRemote); err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
