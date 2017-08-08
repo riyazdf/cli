@@ -65,7 +65,7 @@ func revokeTrust(cli command.Cli, remote string) error {
 func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
 	tag := ref.Tag()
 	// TODO(riyazdf): can we allow for a memory changelist?
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "push")
+	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "push", "pull")
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
