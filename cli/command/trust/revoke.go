@@ -93,6 +93,8 @@ func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *regis
 	if err := notaryRepo.Publish(); err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
+
+	fmt.Println("Successfully deleted signature")
 	return nil
 }
 
@@ -129,10 +131,6 @@ func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.Repo
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	// Publish change
-	if err := notaryRepo.Publish(); err != nil {
-		return trust.NotaryError(ref.Name(), err)
-	}
-
+	fmt.Println("Successfully deleted all signature data")
 	return nil
 }
