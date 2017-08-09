@@ -313,13 +313,13 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 			RootRole: data.RootRole{
 				KeyIDs: []string{"key31"},
 			},
-			Name: data.CanonicalRootRole,
+			Name: data.CanonicalTargetsRole,
 		},
 		{
 			RootRole: data.RootRole{
 				KeyIDs: []string{"key41"},
 			},
-			Name: data.CanonicalTargetsRole,
+			Name: data.CanonicalRootRole,
 		},
 		{
 			RootRole: data.RootRole{
