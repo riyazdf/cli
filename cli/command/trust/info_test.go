@@ -83,7 +83,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "DIGEST")
 	assert.Contains(t, buf.String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "Administrative keys for docker.io/library/alpine:")
+	assert.Contains(t, buf.String(), "Administrative keys for alpine:")
 	assert.Contains(t, buf.String(), "(Repo Admin)")
 	// no delegations on this repo
 	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
@@ -97,7 +97,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "DIGEST")
 	assert.Contains(t, buf.String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "Administrative keys for docker.io/library/alpine:")
+	assert.Contains(t, buf.String(), "Administrative keys for alpine:")
 	assert.Contains(t, buf.String(), "3.5")
 	assert.Contains(t, buf.String(), "(Repo Admin)")
 	// no delegations on this repo
@@ -118,7 +118,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, buf.String(), "List of signers and their KeyIDs:")
 	assert.Contains(t, buf.String(), "SIGNER")
 	assert.Contains(t, buf.String(), "KEYS")
-	assert.Contains(t, buf.String(), "Administrative keys for docker.io/dockerorcadev/trust-fixture:")
+	assert.Contains(t, buf.String(), "Administrative keys for dockerorcadev/trust-fixture:")
 	assert.Contains(t, buf.String(), "Repository Key")
 	assert.Contains(t, buf.String(), "Root Key")
 	// all signers have names
