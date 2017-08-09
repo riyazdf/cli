@@ -84,6 +84,48 @@ func signImage(cli command.Cli, imageName string) error {
 	fmt.Fprintf(cli.Out(), "Successfully signed %q:%s\n", repoInfo.Name.Name(), tag)
 	return nil
 }
+func createTarget(notaryRepo *client.NotaryRepository, tag string) (client.Target, error) {
+	target := &client.Target{}
+	var err error
+	if tag == "" {
+		return *target, fmt.Errorf("No tag specified")
+	}
+	target.Name = tag
+	target.Hashes, target.Length, err = getSignedManifestHashAndSize(notaryRepo, tag)
+	return *target, err
+}
+func getSignedManifestHashAndSize(notaryRepo *client.NotaryRepository, tag string) (data.Hashes, int64, error) {
+	targets, err := notaryRepo.GetAllTargetMetadataByName(tag)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, tgt := range targets {
+		if isReleasedTarget(tgt.Role.Name) {
+			return tgt.Target.Hashes, tgt.Target.Length, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("No trust data available for %s", tag)
+}
+
+func getOtherSigners(notaryRepo *client.NotaryRepository, tag string) ([]string, error) {
+	targets, err := notaryRepo.GetAllTargetMetadataByName(tag)
+	var signers []string
+	if err != nil {
+		return nil, err
+	}
+	for _, tgt := range targets {
+		if !isReleasedTarget(tgt.Role.Name) {
+			signers = append(signers, notaryRoleToSigner(tgt.Role.Name))
+		}
+	}
+	return signers, err
+}
+func printOtherSigners(otherSigners []string) {
+	if len(otherSigners) != 0 {
+		fmt.Println("Other signers of this tag:")
+		fmt.Println(strings.Join(otherSigners, ", "))
+	}
+}
 
 func createTarget(notaryRepo *client.NotaryRepository, tag string) (client.Target, error) {
 	target := &client.Target{}
