@@ -114,24 +114,36 @@ func revokeSingleSig(cli command.Cli, ref reference.NamedTagged, repoInfo *regis
 }
 
 func revokeAllSigs(cli command.Cli, ref reference.Named, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig) error {
-
-	server, err := trust.Server(repoInfo.Index)
+	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, authConfig, "*")
+	if err != nil {
+		return trust.NotaryError(ref.Name(), err)
+	}
+	targetList, err := notaryRepo.ListTargets()
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
-	tr, err := trust.GetTransport(repoInfo, server, authConfig, "*")
-	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+	releasedTargetList := []client.Target{}
+	for _, targetWithRole := range targetList {
+		target := targetWithRole.Target
+		releasedTargetList = append(releasedTargetList, target)
 	}
 
-	notaryRepo, err := trust.GetNotaryRepositoryWithTransport(cli, repoInfo, server, tr)
-	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+	// we need all the roles that signed each released target so we can remove from all roles.
+	for _, releasedTarget := range releasedTargetList {
+		signableRoles, err := getSignableRoles(notaryRepo, &releasedTarget)
+		if err != nil {
+			return trust.NotaryError(ref.Name(), err)
+		}
+		roles := []data.RoleName{}
+		roles = append(roles, signableRoles...)
+		// remove from all roles
+		if err := notaryRepo.RemoveTarget(releasedTarget.Name, roles...); err != nil {
+			return trust.NotaryError(ref.Name(), err)
+		}
 	}
-
-	// Delete trust data for this repo
-	if err := client.DeleteTrustData(trust.GetTrustDirectoryName(), notaryRepo.GetGUN(), server, tr, true); err != nil {
+	// Publish change
+	if err := notaryRepo.Publish(); err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
