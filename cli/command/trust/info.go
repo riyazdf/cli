@@ -120,7 +120,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 
 	// This will always have the root and targets information
-	fmt.Fprintf(cli.Out(), "\nRepository keys for %s:\n", repoInfo.Name)
+	fmt.Fprintf(cli.Out(), "\nAdministrative keys for %s:\n", remote)
 	for name, key := range adminRoleToKeyIDs {
 		fmt.Fprintf(cli.Out(), "%s:\t%s\n", name, key)
 	}
@@ -137,10 +137,10 @@ func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) 
 		switch roleWithSig.Name {
 		case trust.ReleasesRole, data.CanonicalSnapshotRole, data.CanonicalTimestampRole:
 			continue
-		case data.CanonicalRootRole:
-			adminRoleToKeyIDs["Signer Admin Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		case data.CanonicalTargetsRole:
-			adminRoleToKeyIDs["Root Pinning Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
+			adminRoleToKeyIDs["Repository Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
+		case data.CanonicalRootRole:
+			adminRoleToKeyIDs["Root Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		default:
 			signerRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
 		}
