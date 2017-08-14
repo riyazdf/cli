@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/docker/pkg/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTrustRevokeErrors(t *testing.T) {
@@ -33,7 +34,7 @@ func TestTrustRevokeErrors(t *testing.T) {
 		{
 			name:          "trust-data-for-tag-does-not-exist",
 			args:          []string{"alpine:foo"},
-			expectedError: "could not remove signature for alpine:foo: No valid trust data for foo",
+			expectedError: "could not remove signature for alpine:foo: No trust data for foo",
 		},
 		{
 			name:          "invalid-img-reference",
@@ -45,9 +46,18 @@ func TestTrustRevokeErrors(t *testing.T) {
 			args: []string{"riyaz/unsigned-img:v1"},
 			expectedError: strings.Join([]string{
 				"could not remove signature for riyaz/unsigned-img:v1:",
-				"Error: remote trust data does not exist for docker.io/riyaz/unsigned-img:",
 				"notary.docker.io does not have trust data for docker.io/riyaz/unsigned-img",
 			}, " "),
+		},
+		{
+			name:          "no-signing-keys-for-image",
+			args:          []string{"alpine", "-y"},
+			expectedError: "could not remove signature for alpine: could not find necessary signing keys",
+		},
+		{
+			name:          "digest-reference",
+			args:          []string{"ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2"},
+			expectedError: "cannot use a digest reference for IMAGE:TAG",
 		},
 	}
 	for _, tc := range testCases {
@@ -58,4 +68,14 @@ func TestTrustRevokeErrors(t *testing.T) {
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
 	}
+}
+
+func TestNewRevokeTrustAllSigConfirmation(t *testing.T) {
+	buf := new(bytes.Buffer)
+	cmd := newRevokeCommand(
+		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+	cmd.SetArgs([]string{"alpine"})
+	assert.NoError(t, cmd.Execute())
+
+	assert.Contains(t, buf.String(), "Please confirm you would like to delete all signature data for alpine? (y/n) \nAborting action.")
 }
