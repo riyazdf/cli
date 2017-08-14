@@ -61,9 +61,9 @@ func notaryRoleToSigner(tufRole data.RoleName) string {
 	return strings.TrimPrefix(tufRole.String(), "targets/")
 }
 
-func newInfoCommand(dockerCli command.Cli) *cobra.Command {
+func newInspectCommand(dockerCli command.Cli) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "info [OPTIONS] IMAGE",
+		Use:   "inspect [OPTIONS] IMAGE",
 		Short: "Display detailed information about keys and signatures",
 		Args:  cli.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -63,7 +63,7 @@ func TestTrustInfoErrors(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		buf := new(bytes.Buffer)
-		cmd := newInfoCommand(
+		cmd := newInspectCommand(
 			test.NewFakeCliWithOutput(&fakeClient{}, buf))
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
@@ -73,7 +73,7 @@ func TestTrustInfoErrors(t *testing.T) {
 
 func TestTrustInfo(t *testing.T) {
 	buf := new(bytes.Buffer)
-	cmd := newInfoCommand(
+	cmd := newInspectCommand(
 		test.NewFakeCliWithOutput(&fakeClient{}, buf))
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
@@ -89,7 +89,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
 
 	buf = new(bytes.Buffer)
-	cmd = newInfoCommand(
+	cmd = newInspectCommand(
 		test.NewFakeCliWithOutput(&fakeClient{}, buf))
 	cmd.SetArgs([]string{"alpine:3.5"})
 	assert.NoError(t, cmd.Execute())
@@ -105,7 +105,7 @@ func TestTrustInfo(t *testing.T) {
 	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
 
 	buf = new(bytes.Buffer)
-	cmd = newInfoCommand(
+	cmd = newInspectCommand(
 		test.NewFakeCliWithOutput(&fakeClient{}, buf))
 	cmd.SetArgs([]string{"dockerorcadev/trust-fixture"})
 	assert.NoError(t, cmd.Execute())
