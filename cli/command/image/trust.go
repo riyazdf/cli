@@ -28,8 +28,8 @@ type target struct {
 	size   int64
 }
 
-// trustedPush handles content trust pushing of an image
-func trustedPush(ctx context.Context, cli command.Cli, repoInfo *registry.RepositoryInfo, ref reference.Named, authConfig types.AuthConfig, requestPrivilege types.RequestPrivilegeFunc) error {
+// TrustedPush handles content trust pushing of an image
+func TrustedPush(ctx context.Context, cli command.Cli, repoInfo *registry.RepositoryInfo, ref reference.Named, authConfig types.AuthConfig, requestPrivilege types.RequestPrivilegeFunc) error {
 	responseBody, err := imagePushPrivileged(ctx, cli, authConfig, ref, requestPrivilege)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func PushTrustedReference(streams command.Streams, repoInfo *registry.Repository
 		err = repo.AddTarget(target, data.CanonicalTargetsRole)
 	case nil:
 		// already initialized and we have successfully downloaded the latest metadata
-		err = addTargetToAllSignableRoles(repo, target)
+		err = AddTargetToAllSignableRoles(repo, target)
 	default:
 		return trust.NotaryError(repoInfo.Name.Name(), err)
 	}
@@ -154,11 +154,11 @@ func PushTrustedReference(streams command.Streams, repoInfo *registry.Repository
 	return nil
 }
 
-// Attempt to add the image target to all the top level delegation roles we can
+// AddTargetToAllSignableRoles attempts to add the image target to all the top level delegation roles we can
 // (based on whether we have the signing key and whether the role's path allows
 // us to).
 // If there are no delegation roles, we add to the targets role.
-func addTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.Target) error {
+func AddTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.Target) error {
 	var signableRoles []data.RoleName
 
 	// translate the full key names, which includes the GUN, into just the key IDs
