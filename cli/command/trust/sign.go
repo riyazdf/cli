@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
+	"github.com/docker/cli/cli/command/image"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
@@ -17,16 +19,16 @@ func newSignCommand(dockerCli command.Cli) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sign [OPTIONS] IMAGE TAG",
 		Short: "Sign an image",
-		Args:  cli.ExactArgs(2),
+		Args:  cli.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return signImage(dockerCli, args[0], args[1])
+			return signImage(dockerCli, args[0])
 		},
 	}
 	return cmd
 }
 
-func signImage(cli command.Cli, image, tag string) error {
-	ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, image)
+func signImage(cli command.Cli, imageName string) error {
+	ctx, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, imageName)
 	if err != nil {
 		return err
 	}
@@ -35,7 +37,14 @@ func signImage(cli command.Cli, image, tag string) error {
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
-	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s:%s\n", image, tag)
+	tag, err := getTag(ref)
+	if err != nil {
+		return err
+	}
+	if tag == "" {
+		return fmt.Errorf("No tag specified for %s", imageName)
+	}
+	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s\n", imageName)
 
 	// get the latest repository metadata so we can figure out which roles to sign
 	if err = notaryRepo.Update(false); err != nil {
@@ -52,9 +61,73 @@ func signImage(cli command.Cli, image, tag string) error {
 			return trust.NotaryError(repoInfo.Name.Name(), err)
 		}
 	}
-
-	// TODO: craft and sign the target using image.addTargetToAllSignableRoles (needs to be exported)
+	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
+	target, err := createTarget(notaryRepo, tag)
+	if err != nil && strings.Contains(err.Error(), "No valid trust data for") {
+		return image.TrustedPush(ctx, cli, repoInfo, ref, *authConfig, requestPrivilege)
+	} else if err != nil {
+		return err
+	}
+	otherSigners, err := getOtherSigners(notaryRepo, tag)
+	if err != nil {
+		return err
+	}
+	printOtherSigners(otherSigners)
+	err = image.AddTargetToAllSignableRoles(notaryRepo, &target)
+	if err == nil {
+		err = notaryRepo.Publish()
+	}
+	if err != nil {
+		fmt.Fprintf(cli.Out(), "Failed to sign %q:%s - %s\n", repoInfo.Name.Name(), tag, err.Error())
+		return trust.NotaryError(repoInfo.Name.Name(), err)
+	}
+	fmt.Fprintf(cli.Out(), "Successfully signed %q:%s\n", repoInfo.Name.Name(), tag)
 	return nil
+}
+
+func createTarget(notaryRepo *client.NotaryRepository, tag string) (client.Target, error) {
+	target := &client.Target{}
+	var err error
+	if tag == "" {
+		return *target, fmt.Errorf("No tag specified")
+	}
+	target.Name = tag
+	target.Hashes, target.Length, err = getSignedManifestHashAndSize(notaryRepo, tag)
+	return *target, err
+}
+
+func getSignedManifestHashAndSize(notaryRepo *client.NotaryRepository, tag string) (data.Hashes, int64, error) {
+	targets, err := notaryRepo.GetAllTargetMetadataByName(tag)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, tgt := range targets {
+		if isReleasedTarget(tgt.Role.Name) {
+			return tgt.Target.Hashes, tgt.Target.Length, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("No valid trust data for %s", tag)
+}
+
+func getOtherSigners(notaryRepo *client.NotaryRepository, tag string) ([]string, error) {
+	targets, err := notaryRepo.GetAllTargetMetadataByName(tag)
+	var signers []string
+	if err != nil {
+		return nil, err
+	}
+	for _, tgt := range targets {
+		if !isReleasedTarget(tgt.Role.Name) {
+			signers = append(signers, notaryRoleToSigner(tgt.Role.Name))
+		}
+	}
+	return signers, err
+}
+
+func printOtherSigners(otherSigners []string) {
+	if len(otherSigners) != 0 {
+		fmt.Println("Other signers of this tag:")
+		fmt.Println(strings.Join(otherSigners, ", "))
+	}
 }
 
 func initNotaryRepoWithSigners(notaryRepo *client.NotaryRepository, newSigner data.RoleName) error {
