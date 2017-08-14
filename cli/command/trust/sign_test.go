@@ -10,7 +10,6 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/pkg/testutil"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
@@ -227,23 +226,6 @@ func TestCreateTarget(t *testing.T) {
 	assert.EqualError(t, err, "No tag specified")
 	_, err = createTarget(notaryRepo, "1")
 	assert.EqualError(t, err, "client is offline")
-}
-
-func TestGetTag(t *testing.T) {
-	ref, err := reference.ParseNormalizedNamed("ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2")
-	assert.NoError(t, err)
-	tag, err := getTag(ref)
-	assert.EqualError(t, err, "cannot display trust info for a digest reference")
-
-	ref, err = reference.ParseNormalizedNamed("alpine:latest")
-	assert.NoError(t, err)
-	tag, err = getTag(ref)
-	assert.Equal(t, tag, "latest")
-
-	ref, err = reference.ParseNormalizedNamed("alpine")
-	assert.NoError(t, err)
-	tag, err = getTag(ref)
-	assert.Equal(t, tag, "")
 }
 
 func TestGetOtherSigners(t *testing.T) {
