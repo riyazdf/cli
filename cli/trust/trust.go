@@ -36,8 +36,7 @@ var (
 	ReleasesRole = data.RoleName(path.Join(data.CanonicalTargetsRole.String(), "releases"))
 )
 
-// GetTrustDirectoryName returns the baseDir for use with notary
-func GetTrustDirectoryName() string {
+func trustDirectory() string {
 	return filepath.Join(cliconfig.Dir(), "trust")
 }
 
@@ -84,8 +83,14 @@ func (scs simpleCredentialStore) RefreshToken(u *url.URL, service string) string
 func (scs simpleCredentialStore) SetRefreshToken(*url.URL, string, string) {
 }
 
-// GetTransport returns an HTTP transport providing authentication support.
-func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig types.AuthConfig, actions ...string) (http.RoundTripper, error) {
+// GetNotaryRepository returns a NotaryRepository which stores all the
+// information needed to operate on a notary repository.
+// It creates an HTTP transport providing authentication support.
+func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
+	server, err := Server(repoInfo.Index)
+	if err != nil {
+		return nil, err
+	}
 
 	var cfg = tlsconfig.ClientDefault()
 	cfg.InsecureSkipVerify = !repoInfo.Index.Secure
@@ -157,32 +162,10 @@ func GetTransport(repoInfo *registry.RepositoryInfo, server string, authConfig t
 	tokenHandler := auth.NewTokenHandlerWithOptions(tokenHandlerOptions)
 	basicHandler := auth.NewBasicHandler(creds)
 	modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
-	return transport.NewTransport(base, modifiers...), nil
-
-}
-
-// GetNotaryRepository returns a NotaryRepository which stores all the
-// information needed to operate on a notary repository.
-// It creates an HTTP transport providing authentication support.
-func GetNotaryRepository(streams command.Cli, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
-	server, err := Server(repoInfo.Index)
-	if err != nil {
-		return nil, err
-	}
-	tr, err := GetTransport(repoInfo, server, authConfig, actions...)
-	if err != nil {
-		return nil, err
-	}
-	return GetNotaryRepositoryWithTransport(streams, repoInfo, server, tr)
-}
-
-// GetNotaryRepositoryWithTransport returns a NotaryRepository which strores
-// all the information needed to operate on a notary repository, given an HTTP
-// transport providing authentication support.
-func GetNotaryRepositoryWithTransport(streams command.Cli, repoInfo *registry.RepositoryInfo, server string, tr http.RoundTripper) (*client.NotaryRepository, error) {
+	tr := transport.NewTransport(base, modifiers...)
 
 	return client.NewFileCachedNotaryRepository(
-		GetTrustDirectoryName(),
+		trustDirectory(),
 		data.GUN(repoInfo.Name.Name()),
 		server,
 		tr,
@@ -190,7 +173,7 @@ func GetNotaryRepositoryWithTransport(streams command.Cli, repoInfo *registry.Re
 		trustpinning.TrustPinConfig{})
 }
 
-func getPassphraseRetriever(streams command.Cli) notary.PassRetriever {
+func getPassphraseRetriever(streams command.Streams) notary.PassRetriever {
 	aliasMap := map[string]string{
 		"root":     "root",
 		"snapshot": "repository",

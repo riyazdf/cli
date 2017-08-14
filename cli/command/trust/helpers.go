@@ -3,6 +3,7 @@ package trust
 import (
 	"context"
 	"fmt"
+	"io"
 	"path"
 	"strings"
 
@@ -37,7 +38,7 @@ func getTag(ref reference.Named) (string, error) {
 	var tag string
 	switch x := ref.(type) {
 	case reference.Canonical:
-		return "", fmt.Errorf("cannot display trust info for a digest reference")
+		return "", fmt.Errorf("cannot use a digest reference for IMAGE:TAG")
 	case reference.NamedTagged:
 		tag = x.Tag()
 	default:
@@ -60,7 +61,7 @@ func notaryRoleToSigner(tufRole data.RoleName) string {
 	return strings.TrimPrefix(tufRole.String(), "targets/")
 }
 
-// GetSignableRoles returns a list of roles for which we have valid signing
+// getSignableRoles returns a list of roles for which we have valid signing
 // keys, given a notary repository and a target
 func getSignableRoles(repo *client.NotaryRepository, target *client.Target) ([]data.RoleName, error) {
 	var signableRoles []data.RoleName
@@ -105,4 +106,15 @@ func getSignableRoles(repo *client.NotaryRepository, target *client.Target) ([]d
 
 	return signableRoles, nil
 
+}
+
+func askConfirm(input io.Reader) bool {
+	var res string
+	if _, err := fmt.Fscanln(input, &res); err != nil {
+		return false
+	}
+	if strings.EqualFold(res, "y") || strings.EqualFold(res, "yes") {
+		return true
+	}
+	return false
 }
