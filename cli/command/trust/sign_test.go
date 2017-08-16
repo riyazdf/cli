@@ -7,19 +7,21 @@ import (
 	"os"
 	"testing"
 
-	"github.com/docker/notary"
-	"github.com/docker/notary/client/changelist"
-	"github.com/docker/notary/tuf/data"
-
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/pkg/testutil"
+	"github.com/docker/notary"
 	"github.com/docker/notary/client"
+	"github.com/docker/notary/client/changelist"
 	"github.com/docker/notary/passphrase"
 	"github.com/docker/notary/trustpinning"
+	"github.com/docker/notary/tuf/data"
 	"github.com/stretchr/testify/assert"
 )
+
+const passwd = "password"
 
 func TestTrustSignErrors(t *testing.T) {
 	testCases := []struct {
@@ -29,36 +31,37 @@ func TestTrustSignErrors(t *testing.T) {
 	}{
 		{
 			name:          "not-enough-args",
-			expectedError: "requires exactly 2 argument(s)",
-		}, {
-			name:          "still-not-enough-args",
-			args:          []string{"image"},
-			expectedError: "requires exactly 2 argument(s)",
+			expectedError: "requires exactly 1 argument(s)",
 		},
 		{
 			name:          "too-many-args",
-			args:          []string{"image", "tag", "blah"},
-			expectedError: "requires exactly 2 argument(s)",
+			args:          []string{"image", "tag"},
+			expectedError: "requires exactly 1 argument(s)",
 		},
 		{
 			name:          "sha-reference",
-			args:          []string{"870d292919d01a0af7e7f056271dc78792c05f55f49b9b9012b6d89725bd9abd", "tag"},
+			args:          []string{"870d292919d01a0af7e7f056271dc78792c05f55f49b9b9012b6d89725bd9abd"},
 			expectedError: "invalid repository name",
 		},
 		{
 			name:          "nonexistent-reg",
-			args:          []string{"nonexistent-reg-name.io/image", "tag"},
+			args:          []string{"nonexistent-reg-name.io/image:tag"},
 			expectedError: "no such host",
 		},
 		{
 			name:          "invalid-img-reference",
-			args:          []string{"ALPINE", "latest"},
+			args:          []string{"ALPINE:latest"},
 			expectedError: "invalid reference format",
 		},
 		{
 			name:          "no-shell-for-passwd",
-			args:          []string{"riyaz/unsigned-img", "latest"},
+			args:          []string{"riyaz/unsigned-img:latest"},
 			expectedError: "maximum number of passphrase attempts exceeded",
+		},
+		{
+			name:          "no-tag",
+			args:          []string{"riyaz/unsigned-img"},
+			expectedError: "No tag specified for riyaz/unsigned-img",
 		},
 	}
 	// change to a tmpdir
@@ -77,7 +80,6 @@ func TestTrustSignErrors(t *testing.T) {
 }
 
 func TestGetOrGenerateNotaryKey(t *testing.T) {
-	passwd := "password"
 	tmpDir, err := ioutil.TempDir("", "notary-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
@@ -123,7 +125,6 @@ func TestGetOrGenerateNotaryKey(t *testing.T) {
 }
 
 func TestAddStageSigners(t *testing.T) {
-	passwd := "password"
 	tmpDir, err := ioutil.TempDir("", "notary-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
@@ -201,4 +202,57 @@ func TestAddStageSigners(t *testing.T) {
 		expectedJSON,
 	)
 	assert.Equal(t, expectedChange, releasesPathsChange)
+}
+
+func TestGetSignedManifestHashAndSize(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "notary-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	assert.NoError(t, err)
+	target := &client.Target{}
+	target.Hashes, target.Length, err = getSignedManifestHashAndSize(notaryRepo, "test")
+	assert.EqualError(t, err, "client is offline")
+}
+
+func TestCreateTarget(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "notary-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	assert.NoError(t, err)
+	_, err = createTarget(notaryRepo, "")
+	assert.EqualError(t, err, "No tag specified")
+	_, err = createTarget(notaryRepo, "1")
+	assert.EqualError(t, err, "client is offline")
+}
+
+func TestGetTag(t *testing.T) {
+	ref, err := reference.ParseNormalizedNamed("ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2")
+	assert.NoError(t, err)
+	tag, err := getTag(ref)
+	assert.EqualError(t, err, "cannot display trust info for a digest reference")
+
+	ref, err = reference.ParseNormalizedNamed("alpine:latest")
+	assert.NoError(t, err)
+	tag, err = getTag(ref)
+	assert.Equal(t, tag, "latest")
+
+	ref, err = reference.ParseNormalizedNamed("alpine")
+	assert.NoError(t, err)
+	tag, err = getTag(ref)
+	assert.Equal(t, tag, "")
+}
+
+func TestGetOtherSigners(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "notary-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	assert.NoError(t, err)
+	_, err = getOtherSigners(notaryRepo, "test")
+	assert.EqualError(t, err, "client is offline")
 }

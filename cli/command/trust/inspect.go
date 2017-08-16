@@ -11,11 +11,9 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/command/formatter"
 	"github.com/docker/cli/cli/trust"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -47,20 +45,6 @@ func (tagComparator trustTagRowList) Swap(i, j int) {
 	tagComparator[i], tagComparator[j] = tagComparator[j], tagComparator[i]
 }
 
-// check if a role name is "released": either targets/releases or targets TUF roles
-func isReleasedTarget(role data.RoleName) bool {
-	return role == data.CanonicalTargetsRole || role == trust.ReleasesRole
-}
-
-// convert TUF role name to a human-understandable signer name
-func notaryRoleToSigner(tufRole data.RoleName) string {
-	//  don't show a signer for "targets" or "targets/releases"
-	if isReleasedTarget(data.RoleName(tufRole.String())) {
-		return releasedRoleName
-	}
-	return strings.TrimPrefix(tufRole.String(), "targets/")
-}
-
 func newInspectCommand(dockerCli command.Cli) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect [OPTIONS] IMAGE",
@@ -74,25 +58,19 @@ func newInspectCommand(dockerCli command.Cli) *cobra.Command {
 }
 
 func lookupTrustInfo(cli command.Cli, remote string) error {
-	ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, remote)
+	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, remote)
 	if err != nil {
 		return err
 	}
-	var tag string
-	switch x := ref.(type) {
-	case reference.Canonical:
-		return errors.New("cannot display trust info for a digest reference")
-	case reference.NamedTagged:
-		tag = x.Tag()
-	default:
-		tag = ""
-	}
-
 	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, *authConfig, "pull")
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
+	tag, err := getTag(ref)
+	if err != nil {
+		return err
+	}
 	// Retrieve all released signatures, match them, and pretty print them
 	allSignedTargets, err := notaryRepo.GetAllTargetMetadataByName(tag)
 	if err != nil {
