@@ -76,7 +76,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	if err != nil {
 		logrus.Debug(trust.NotaryError(ref.Name(), err))
 		// print an empty table if we don't have signed targets, but have an initialized notary repo
-		if !strings.Contains(err.Error(), "No valid trust data for") {
+		if err.(type) == client.ErrNoSuchTarget {
 			return fmt.Errorf("No signatures or cannot access %s", remote)
 		}
 	}

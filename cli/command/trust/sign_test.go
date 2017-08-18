@@ -10,6 +10,7 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/pkg/testutil"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
