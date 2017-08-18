@@ -361,7 +361,7 @@ func TrustedReference(ctx context.Context, cli command.Cli, ref reference.NamedT
 	// Only list tags in the top level targets role or the releases delegation role - ignore
 	// all other delegation roles
 	if t.Role != trust.ReleasesRole && t.Role != data.CanonicalTargetsRole {
-		return nil, trust.NotaryError(repoInfo.Name.Name(), errors.Errorf("No trust data for %s", ref.Tag()))
+		return nil, trust.NotaryError(repoInfo.Name.Name(), client.ErrNoSuchTarget(ref.Tag()))
 	}
 	r, err := convertTarget(t.Target)
 	if err != nil {

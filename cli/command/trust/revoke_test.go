@@ -38,7 +38,7 @@ func TestTrustRevokeErrors(t *testing.T) {
 		{
 			name:          "trust-data-for-tag-does-not-exist",
 			args:          []string{"alpine:foo"},
-			expectedError: "could not remove signature for alpine:foo: No trust data for foo",
+			expectedError: "could not remove signature for alpine:foo: No valid trust data for foo",
 		},
 		{
 			name:          "invalid-img-reference",
