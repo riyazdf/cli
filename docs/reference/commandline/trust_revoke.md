@@ -24,19 +24,19 @@ Remove trust for an image
 
 ## Description
 
-Docker trust revoke removes signatures from tags in a notary repositories.
+Docker trust revoke removes signatures from tags in signed repositories.
 
 ## Examples
 
-### Revoke the signature on a tag
+### Revoke signatures from a signed tag
 
 ```bash
 $ docker trust revoke alpine:latest
 ```
 
-### Revoke the signatures on all tags in a repository
+### Revoke signatures on all tags in a repository
 
 ```bash
-$ docker trust inspect alpine
+$ docker trust revoke alpine
 ```
 
