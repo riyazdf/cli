@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
+	"github.com/docker/cli/cli/command/image"
 	"github.com/docker/cli/cli/trust"
 	"github.com/spf13/cobra"
 )
@@ -112,7 +113,7 @@ func revokeAllSigs(notaryRepo *client.NotaryRepository) error {
 
 // get all the roles that signed the target and removes it from all roles.
 func getSignableRolesForTargetAndRemove(releasedTarget client.Target, notaryRepo *client.NotaryRepository) error {
-	signableRoles, err := getSignableRoles(notaryRepo, &releasedTarget)
+	signableRoles, err := image.GetSignableRoles(notaryRepo, &releasedTarget)
 	if err != nil {
 		return err
 	}

@@ -3,11 +3,15 @@ package trust
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/docker/pkg/testutil"
+	"github.com/docker/notary/client"
+	"github.com/docker/notary/passphrase"
+	"github.com/docker/notary/trustpinning"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -78,4 +82,15 @@ func TestNewRevokeTrustAllSigConfirmation(t *testing.T) {
 	assert.NoError(t, cmd.Execute())
 
 	assert.Contains(t, buf.String(), "Please confirm you would like to delete all signature data for alpine? (y/n) \nAborting action.")
+}
+
+func TestGetSignableRolesForTargetAndRemoveError(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", "notary-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever("password"), trustpinning.TrustPinConfig{})
+	target := client.Target{}
+	err = getSignableRolesForTargetAndRemove(target, notaryRepo)
+	assert.EqualError(t, err, "client is offline")
 }
