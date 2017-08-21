@@ -16,7 +16,7 @@ keywords: "sign, notary, trust"
 # trust sign
 
 ```markdown
-Usage:  docker trust inspect [OPTIONS] IMAGE:TAG
+Usage:  docker trust sign [OPTIONS] IMAGE:TAG
 
 Sign an image
 
@@ -24,7 +24,7 @@ Sign an image
 
 ## Description
 
-Docker trust sign adds signatures to tags in a notary repositories.
+Docker trust sign adds signatures to tags to create signed repositories.
 
 ## Examples
 
