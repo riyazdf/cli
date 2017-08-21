@@ -154,11 +154,9 @@ func PushTrustedReference(streams command.Streams, repoInfo *registry.Repository
 	return nil
 }
 
-// AddTargetToAllSignableRoles attempts to add the image target to all the top level delegation roles we can
-// (based on whether we have the signing key and whether the role's path allows
-// us to).
-// If there are no delegation roles, we add to the targets role.
-func AddTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.Target) error {
+// GetSignableRoles returns a list of roles for which we have valid signing
+// keys, given a notary repository and a target
+func GetSignableRoles(repo *client.NotaryRepository, target *client.Target) ([]data.RoleName, error) {
 	var signableRoles []data.RoleName
 
 	// translate the full key names, which includes the GUN, into just the key IDs
@@ -169,12 +167,13 @@ func AddTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.T
 
 	allDelegationRoles, err := repo.GetDelegationRoles()
 	if err != nil {
-		return err
+		return signableRoles, err
 	}
 
 	// if there are no delegation roles, then just try to sign it into the targets role
 	if len(allDelegationRoles) == 0 {
-		return repo.AddTarget(target, data.CanonicalTargetsRole)
+		signableRoles = append(signableRoles, data.CanonicalTargetsRole)
+		return signableRoles, nil
 	}
 
 	// there are delegation roles, find every delegation role we have a key for, and
@@ -196,7 +195,21 @@ func AddTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.T
 	}
 
 	if len(signableRoles) == 0 {
-		return errors.Errorf("no valid signing keys for delegation roles")
+		return signableRoles, errors.Errorf("no valid signing keys for delegation roles")
+	}
+
+	return signableRoles, nil
+
+}
+
+// AddTargetToAllSignableRoles attempts to add the image target to all the top level delegation roles we can
+// (based on whether we have the signing key and whether the role's path allows
+// us to).
+// If there are no delegation roles, we add to the targets role.
+func AddTargetToAllSignableRoles(repo *client.NotaryRepository, target *client.Target) error {
+	signableRoles, err := GetSignableRoles(repo, target)
+	if err != nil {
+		return err
 	}
 
 	return repo.AddTarget(target, signableRoles...)
