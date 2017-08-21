@@ -24,21 +24,23 @@ Display detailed information about keys and signatures
 
 ## Description
 
-Docker trust inspect provides detailed information on notary repositories.
+Docker trust inspect provides detailed information on signed repositories.
+This includes all image tags that are signed, who signed them, and who can sign
+new tags.
 
-By default, `docker inspect` will render results in a table.
+By default, `docker trust inspect` will render results in a table.
 
 
 ## Examples
 
-### Get details about an image
+### Get details about signatures for a single image tag
 
 
 ```bash
 $ docker trust inspect alpine:latest
 ```
 
-### Get details about a repository
+### Get details about signatures for all image tags in a repository
 
 ```bash
 $ docker trust inspect alpine
