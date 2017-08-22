@@ -64,7 +64,7 @@ func TestTrustInfoErrors(t *testing.T) {
 	for _, tc := range testCases {
 		buf := new(bytes.Buffer)
 		cmd := newInspectCommand(
-			test.NewFakeCliWithOutput(&fakeClient{}, buf))
+			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
@@ -74,7 +74,7 @@ func TestTrustInfoErrors(t *testing.T) {
 func TestTrustInfo(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cmd := newInspectCommand(
-		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+		test.NewFakeCli(&fakeClient{}))
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
 
@@ -90,7 +90,7 @@ func TestTrustInfo(t *testing.T) {
 
 	buf = new(bytes.Buffer)
 	cmd = newInspectCommand(
-		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+		test.NewFakeCli(&fakeClient{}))
 	cmd.SetArgs([]string{"alpine:3.5"})
 	assert.NoError(t, cmd.Execute())
 	assert.Contains(t, buf.String(), "SIGNED TAG")
@@ -106,7 +106,7 @@ func TestTrustInfo(t *testing.T) {
 
 	buf = new(bytes.Buffer)
 	cmd = newInspectCommand(
-		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+		test.NewFakeCli(&fakeClient{}))
 	cmd.SetArgs([]string{"dockerorcadev/trust-fixture"})
 	assert.NoError(t, cmd.Execute())
 

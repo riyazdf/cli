@@ -67,7 +67,7 @@ func TestTrustRevokeErrors(t *testing.T) {
 	for _, tc := range testCases {
 		buf := new(bytes.Buffer)
 		cmd := newRevokeCommand(
-			test.NewFakeCliWithOutput(&fakeClient{}, buf))
+			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
@@ -77,7 +77,7 @@ func TestTrustRevokeErrors(t *testing.T) {
 func TestNewRevokeTrustAllSigConfirmation(t *testing.T) {
 	buf := new(bytes.Buffer)
 	cmd := newRevokeCommand(
-		test.NewFakeCliWithOutput(&fakeClient{}, buf))
+		test.NewFakeCli(&fakeClient{}))
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
 
