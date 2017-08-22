@@ -118,6 +118,26 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
 	// all signers have names
 	assert.NotContains(t, cli.OutBuffer().String(), "(Repo Admin)")
+
+	cli = test.NewFakeCli(&fakeClient{})
+	cmd = newInspectCommand(cli)
+	cmd.SetArgs([]string{"dockerorcadev/trust-fixture:unsigned"})
+	assert.NoError(t, cmd.Execute())
+
+	// Check that the signatures table does not show up, and instead we get the message
+	assert.Contains(t, cli.OutBuffer().String(), "No signatures for dockerorcadev/trust-fixture:unsigned")
+	assert.NotContains(t, cli.OutBuffer().String(), "SIGNED TAG")
+	assert.NotContains(t, cli.OutBuffer().String(), "DIGEST")
+	assert.NotContains(t, cli.OutBuffer().String(), "SIGNERS")
+	// Check for the signer headers
+	assert.Contains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNER")
+	assert.Contains(t, cli.OutBuffer().String(), "KEYS")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:")
+	assert.Contains(t, cli.OutBuffer().String(), "Repository Key")
+	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
+	// all signers have names
+	assert.NotContains(t, cli.OutBuffer().String(), "(Repo Admin)")
 }
 
 func TestTUFToSigner(t *testing.T) {

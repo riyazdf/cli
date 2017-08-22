@@ -81,8 +81,12 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		}
 	}
 	signatureRows := matchReleasedSignatures(allSignedTargets)
-	if err := printSignatures(cli, signatureRows); err != nil {
-		return err
+	if len(signatureRows) > 0 {
+		if err := printSignatures(cli, signatureRows); err != nil {
+			return err
+		}
+	} else {
+		fmt.Fprintf(cli.Out(), "\nNo signatures for %s\n\n", remote)
 	}
 
 	roleWithSigs, err := notaryRepo.ListRoles()
