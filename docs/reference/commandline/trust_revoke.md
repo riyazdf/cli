@@ -46,8 +46,8 @@ blue                f1c38dbaeeb473c36716f6494d803fbfbe9d8a76916f7c0093f227821e37
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
@@ -72,8 +72,8 @@ blue                f1c38dbaeeb473c36716f6494d803fbfbe9d8a76916f7c0093f227821e37
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
@@ -93,8 +93,8 @@ blue                f1c38dbaeeb473c36716f6494d803fbfbe9d8a76916f7c0093f227821e37
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
@@ -114,13 +114,15 @@ the all tags that have alice's signature on them get removed from the list of re
 
 ```bash
 $ docker trust inspect example/trust-demo
-SIGNED TAG          DIGEST                                                              SIGNERS
+
+No signatures for example/trust-demo
+
 
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
