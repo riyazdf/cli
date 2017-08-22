@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"bytes"
 	"encoding/hex"
 	"io/ioutil"
 	"testing"
@@ -62,7 +61,6 @@ func TestTrustInfoErrors(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		buf := new(bytes.Buffer)
 		cmd := newInspectCommand(
 			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
@@ -72,57 +70,54 @@ func TestTrustInfoErrors(t *testing.T) {
 }
 
 func TestTrustInfo(t *testing.T) {
-	buf := new(bytes.Buffer)
-	cmd := newInspectCommand(
-		test.NewFakeCli(&fakeClient{}))
+	cli := test.NewFakeCli(&fakeClient{})
+	cmd := newInspectCommand(cli)
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
 
 	// Check for the signed tag headers
-	assert.Contains(t, buf.String(), "SIGNED TAG")
-	assert.Contains(t, buf.String(), "DIGEST")
-	assert.Contains(t, buf.String(), "SIGNERS")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
+	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "Administrative keys for alpine:")
-	assert.Contains(t, buf.String(), "(Repo Admin)")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for alpine:")
+	assert.Contains(t, cli.OutBuffer().String(), "(Repo Admin)")
 	// no delegations on this repo
-	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
+	assert.NotContains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
 
-	buf = new(bytes.Buffer)
-	cmd = newInspectCommand(
-		test.NewFakeCli(&fakeClient{}))
+	cli = test.NewFakeCli(&fakeClient{})
+	cmd = newInspectCommand(cli)
 	cmd.SetArgs([]string{"alpine:3.5"})
 	assert.NoError(t, cmd.Execute())
-	assert.Contains(t, buf.String(), "SIGNED TAG")
-	assert.Contains(t, buf.String(), "DIGEST")
-	assert.Contains(t, buf.String(), "SIGNERS")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
+	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "Administrative keys for alpine:")
-	assert.Contains(t, buf.String(), "3.5")
-	assert.Contains(t, buf.String(), "(Repo Admin)")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for alpine:")
+	assert.Contains(t, cli.OutBuffer().String(), "3.5")
+	assert.Contains(t, cli.OutBuffer().String(), "(Repo Admin)")
 	// no delegations on this repo
-	assert.NotContains(t, buf.String(), "3.6")
-	assert.NotContains(t, buf.String(), "List of signers and their KeyIDs:")
+	assert.NotContains(t, cli.OutBuffer().String(), "3.6")
+	assert.NotContains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
 
-	buf = new(bytes.Buffer)
-	cmd = newInspectCommand(
-		test.NewFakeCli(&fakeClient{}))
+	cli = test.NewFakeCli(&fakeClient{})
+	cmd = newInspectCommand(cli)
 	cmd.SetArgs([]string{"dockerorcadev/trust-fixture"})
 	assert.NoError(t, cmd.Execute())
 
 	// Check for the signed tag headers
-	assert.Contains(t, buf.String(), "SIGNED TAG")
-	assert.Contains(t, buf.String(), "DIGEST")
-	assert.Contains(t, buf.String(), "SIGNERS")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
+	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
 	// Check for the signer headers
-	assert.Contains(t, buf.String(), "List of signers and their KeyIDs:")
-	assert.Contains(t, buf.String(), "SIGNER")
-	assert.Contains(t, buf.String(), "KEYS")
-	assert.Contains(t, buf.String(), "Administrative keys for dockerorcadev/trust-fixture:")
-	assert.Contains(t, buf.String(), "Repository Key")
-	assert.Contains(t, buf.String(), "Root Key")
+	assert.Contains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
+	assert.Contains(t, cli.OutBuffer().String(), "SIGNER")
+	assert.Contains(t, cli.OutBuffer().String(), "KEYS")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:")
+	assert.Contains(t, cli.OutBuffer().String(), "Repository Key")
+	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
 	// all signers have names
-	assert.NotContains(t, buf.String(), "(Repo Admin)")
+	assert.NotContains(t, cli.OutBuffer().String(), "(Repo Admin)")
 }
 
 func TestTUFToSigner(t *testing.T) {

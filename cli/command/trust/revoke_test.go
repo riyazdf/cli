@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -23,7 +22,7 @@ func TestTrustRevokeErrors(t *testing.T) {
 	}{
 		{
 			name:          "not-enough-args",
-			expectedError: "requires exactly 1 argument(s)",
+			expectedError: "requires exactly 1 argument",
 		},
 		{
 			name:          "too-many-args",
@@ -65,7 +64,6 @@ func TestTrustRevokeErrors(t *testing.T) {
 		},
 	}
 	for _, tc := range testCases {
-		buf := new(bytes.Buffer)
 		cmd := newRevokeCommand(
 			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
@@ -75,13 +73,12 @@ func TestTrustRevokeErrors(t *testing.T) {
 }
 
 func TestNewRevokeTrustAllSigConfirmation(t *testing.T) {
-	buf := new(bytes.Buffer)
-	cmd := newRevokeCommand(
-		test.NewFakeCli(&fakeClient{}))
+	cli := test.NewFakeCli(&fakeClient{})
+	cmd := newRevokeCommand(cli)
 	cmd.SetArgs([]string{"alpine"})
 	assert.NoError(t, cmd.Execute())
 
-	assert.Contains(t, buf.String(), "Please confirm you would like to delete all signature data for alpine? (y/n) \nAborting action.")
+	assert.Contains(t, cli.OutBuffer().String(), "Please confirm you would like to delete all signature data for alpine? (y/n) \nAborting action.")
 }
 
 func TestGetSignableRolesForTargetAndRemoveError(t *testing.T) {

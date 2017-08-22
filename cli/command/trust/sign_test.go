@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -30,12 +29,12 @@ func TestTrustSignErrors(t *testing.T) {
 	}{
 		{
 			name:          "not-enough-args",
-			expectedError: "requires exactly 1 argument(s)",
+			expectedError: "requires exactly 1 argument",
 		},
 		{
 			name:          "too-many-args",
 			args:          []string{"image", "tag"},
-			expectedError: "requires exactly 1 argument(s)",
+			expectedError: "requires exactly 1 argument",
 		},
 		{
 			name:          "sha-reference",
@@ -69,7 +68,6 @@ func TestTrustSignErrors(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 	config.SetDir(tmpDir)
 	for _, tc := range testCases {
-		buf := new(bytes.Buffer)
 		cmd := newSignCommand(
 			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
