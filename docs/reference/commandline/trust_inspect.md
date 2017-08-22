@@ -68,6 +68,24 @@ Repository Key:	27df2c8187e7543345c2e0bf3a1262e0bc63a72754e9a7395eac3f747ec23a44
 Root Key:	40b66ccc8b176be8c7d365a17f3e046d1c3494e053dd57cfeacfe2e19c4f8e8f
 ```
 
+If the image tag is unsigned or unavailable, `docker trust inspect` will not display any signed tags.
+```
+$ docker trust inspect unsigned-img
+No signatures or cannot access unsigned-img
+```
+
+However, if other tags are signed in the same image repository, `docker trust inspect` will report relevant key information.
+```
+$ docker trust inspect alpine:unsigned
+
+No signatures for alpine:unsigned
+
+
+Administrative keys for alpine:unsigned:
+Repository Key:	5a46c9aaa82ff150bb7305a2d17d0c521c2d784246807b2dc611f436a69041fd
+Root Key:	a2489bcac7a79aa67b19b96c4a3bf0c675ffdf00c6d2fabe1a5df1115e80adce
+```
+
 ### Get details about signatures for all image tags in a repository
 
 ```bash
