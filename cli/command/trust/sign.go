@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"sort"
@@ -50,6 +51,11 @@ func signImage(cli command.Cli, imageName string) error {
 	if err = notaryRepo.Update(false); err != nil {
 		switch err.(type) {
 		case client.ErrRepoNotInitialized, client.ErrRepositoryNotExist:
+			// before initializing a new repo, check that the image exists locally:
+			if err := checkLocalImageExistence(ctx, cli, imageName); err != nil {
+				return err
+			}
+
 			userRole := data.RoleName(path.Join(data.CanonicalTargetsRole.String(), authConfig.Username))
 			if err := initNotaryRepoWithSigners(notaryRepo, userRole); err != nil {
 				return trust.NotaryError(ref.Name(), err)
@@ -83,6 +89,11 @@ func signImage(cli command.Cli, imageName string) error {
 	}
 	fmt.Fprintf(cli.Out(), "Successfully signed %q:%s\n", repoInfo.Name.Name(), tag)
 	return nil
+}
+
+func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
+	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)
+	return err
 }
 
 func createTarget(notaryRepo *client.NotaryRepository, tag string) (client.Target, error) {
