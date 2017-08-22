@@ -42,8 +42,8 @@ SIGNED TAG          DIGEST                                                      
 latest              1072e499f3f655a032e88542330cf75b02e7bdf673278f701d7ba61629ee3ebe   (Repo Admin)
 
 Administrative keys for alpine:latest:
-Root Key:	a2489bcac7a79aa67b19b96c4a3bf0c675ffdf00c6d2fabe1a5df1115e80adce
 Repository Key:	5a46c9aaa82ff150bb7305a2d17d0c521c2d784246807b2dc611f436a69041fd
+Root Key:	a2489bcac7a79aa67b19b96c4a3bf0c675ffdf00c6d2fabe1a5df1115e80adce
 ```
 
 Note that the `SIGNED TAG` maps to the image tag itself, and associates to given image `DIGEST`. `SIGNERS` lists all entities who have signed.
@@ -103,8 +103,8 @@ edge                79d50d15bd7ea48ea00cf3dd343b0e740c1afaa8e899bee475236ef338e1
 latest              1072e499f3f655a032e88542330cf75b02e7bdf673278f701d7ba61629ee3ebe   (Repo Admin)
 
 Administrative keys for alpine:
-Root Key:	a2489bcac7a79aa67b19b96c4a3bf0c675ffdf00c6d2fabe1a5df1115e80adce
 Repository Key:	5a46c9aaa82ff150bb7305a2d17d0c521c2d784246807b2dc611f436a69041fd
+Root Key:	a2489bcac7a79aa67b19b96c4a3bf0c675ffdf00c6d2fabe1a5df1115e80adce
 ```
 
 Here's an example with signers that are set up by `docker trust` commands:
