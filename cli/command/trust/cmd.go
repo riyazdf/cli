@@ -15,12 +15,9 @@ func NewTrustCommand(dockerCli command.Cli) *cobra.Command {
 		RunE:  command.ShowHelp(dockerCli.Err()),
 	}
 	cmd.AddCommand(
-		newConfigCommand(dockerCli),
 		newInspectCommand(dockerCli),
-		newKeyCommand(dockerCli),
 		newRevokeCommand(dockerCli),
 		newSignCommand(dockerCli),
-		newSignerCommand(dockerCli),
 	)
 	return cmd
 }
