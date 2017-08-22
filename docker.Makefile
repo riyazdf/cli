@@ -39,20 +39,12 @@ build: binary
 # clean build artifacts using a container
 .PHONY: clean
 clean: build_docker_image
-<<<<<<< HEAD
-	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make clean
-=======
 	docker run --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make clean
->>>>>>> 12a7387c... Add a warning when make is run outside of a container.
 
 # run go test
 .PHONY: test
 test: build_docker_image
-<<<<<<< HEAD
-	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make test
-=======
 	docker run --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make test
->>>>>>> 12a7387c... Add a warning when make is run outside of a container.
 
 # build the CLI for multiple architectures using a container
 .PHONY: cross
@@ -65,11 +57,7 @@ cross-shell: build_cross_image
 
 .PHONY: watch
 watch: build_docker_image
-<<<<<<< HEAD
-	docker run -ti --rm $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make watch
-=======
 	docker run --rm $(ENVVARS) $(MOUNTS) $(DEV_DOCKER_IMAGE_NAME) make watch
->>>>>>> 12a7387c... Add a warning when make is run outside of a container.
 
 # start container in interactive mode for in-container development
 .PHONY: dev
