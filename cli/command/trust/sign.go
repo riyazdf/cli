@@ -1,7 +1,6 @@
 package trust
 
 import (
-	"context"
 	"fmt"
 	"path"
 	"sort"
@@ -89,11 +88,6 @@ func signImage(cli command.Cli, imageName string) error {
 	}
 	fmt.Fprintf(cli.Out(), "Successfully signed %q:%s\n", repoInfo.Name.Name(), tag)
 	return nil
-}
-
-func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
-	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)
-	return err
 }
 
 func createTarget(notaryRepo *client.NotaryRepository, tag string) (client.Target, error) {

@@ -14,6 +14,11 @@ import (
 	"github.com/docker/notary/tuf/data"
 )
 
+func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
+	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)
+	return err
+}
+
 func getImageReferencesAndAuth(cli command.Cli, imgName string) (context.Context, reference.Named, *registry.RepositoryInfo, *types.AuthConfig, error) {
 	ref, err := reference.ParseNormalizedNamed(imgName)
 	if err != nil {
