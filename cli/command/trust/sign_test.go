@@ -71,7 +71,7 @@ func TestTrustSignErrors(t *testing.T) {
 	for _, tc := range testCases {
 		buf := new(bytes.Buffer)
 		cmd := newSignCommand(
-			test.NewFakeCliWithOutput(&fakeClient{}, buf))
+			test.NewFakeCli(&fakeClient{}))
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
