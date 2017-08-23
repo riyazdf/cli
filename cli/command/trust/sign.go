@@ -50,6 +50,11 @@ func signImage(cli command.Cli, imageName string) error {
 	if err = notaryRepo.Update(false); err != nil {
 		switch err.(type) {
 		case client.ErrRepoNotInitialized, client.ErrRepositoryNotExist:
+			// before initializing a new repo, check that the image exists locally:
+			if err := checkLocalImageExistence(ctx, cli, imageName); err != nil {
+				return err
+			}
+
 			userRole := data.RoleName(path.Join(data.CanonicalTargetsRole.String(), authConfig.Username))
 			if err := initNotaryRepoWithSigners(notaryRepo, userRole); err != nil {
 				return trust.NotaryError(ref.Name(), err)

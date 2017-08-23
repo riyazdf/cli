@@ -54,7 +54,7 @@ func TestTrustSignErrors(t *testing.T) {
 		{
 			name:          "no-shell-for-passwd",
 			args:          []string{"riyaz/unsigned-img:latest"},
-			expectedError: "maximum number of passphrase attempts exceeded",
+			expectedError: "error during connect: Get /images/riyaz/unsigned-img:latest/json",
 		},
 		{
 			name:          "no-tag",
