@@ -86,8 +86,8 @@ No signatures for example/trust-demo
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
@@ -116,13 +116,13 @@ Successfully signed "docker.io/example/trust-demo":v1
 ```bash
 $ docker trust inspect example/trust-demo
 SIGNED TAG          DIGEST                                                             SIGNERS
-v1                   74d4bfa917d55d53c7df3d2ab20a8d926874d61c3da5ef6de15dd2654fc467c4   alice
+v1                  74d4bfa917d55d53c7df3d2ab20a8d926874d61c3da5ef6de15dd2654fc467c4   alice
 
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             05e87edcaecb
-bob               5600f5ab76a2
+alice               05e87edcaecb
+bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
@@ -144,8 +144,8 @@ Signing and pushing trust metadata for example/trust-demo:v1
 Enter passphrase for root key with ID 36cac18:
 Enter passphrase for new repository key with ID 731396b:
 Repeat passphrase for new repository key with ID 731396b:
-Enter passphrase for new targets/alice key with ID 6d52b29:
-Repeat passphrase for new targets/alice key with ID 6d52b29:
+Enter passphrase for new alice key with ID 6d52b29:
+Repeat passphrase for new alice key with ID 6d52b29:
 Created signer: alice
 Finished initializing "docker.io/example/trust-demo"
 The push refers to a repository [docker.io/example/trust-demo]
@@ -158,7 +158,7 @@ a3fbb648f0bd: Layer already exists
 8d4d1ab5ff74: Layer already exists
 v1: digest: sha256:8f6f460abf0436922df7eb06d28b3cdf733d2cac1a185456c26debbff0839c56 size: 1787
 Signing and pushing trust metadata
-Enter passphrase for targets/alice key with ID 6d52b29:
+Enter passphrase for alice key with ID 6d52b29:
 Successfully signed "docker.io/example/trust-demo":v1
 ```
 
@@ -170,7 +170,7 @@ v1                  8f6f460abf0436922df7eb06d28b3cdf733d2cac1a185456c26debbff083
 List of signers and their KeyIDs:
 
 SIGNER              KEYS
-alice             6d52b29d940f
+alice               6d52b29d940f
 
 Administrative keys for example/trust-demo:
 Repository Key:	731396b65eac3ef5ec01406801bdfb70feb40c17808d2222427c18046eb63beb
