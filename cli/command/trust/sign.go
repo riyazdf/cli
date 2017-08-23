@@ -44,7 +44,6 @@ func signImage(cli command.Cli, imageName string) error {
 	if tag == "" {
 		return fmt.Errorf("No tag specified for %s", imageName)
 	}
-	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s\n", imageName)
 
 	// get the latest repository metadata so we can figure out which roles to sign
 	if err = notaryRepo.Update(false); err != nil {
@@ -73,6 +72,8 @@ func signImage(cli command.Cli, imageName string) error {
 	} else if err != nil {
 		return err
 	}
+
+	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s\n", imageName)
 	otherSigners, err := getOtherSigners(notaryRepo, tag)
 	if err != nil {
 		return err
