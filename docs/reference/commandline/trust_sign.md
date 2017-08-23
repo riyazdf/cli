@@ -129,3 +129,51 @@ Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
+## Initialize a new repo and sign a tag
+
+When signing an image on a repo for the first time, `docker trust sign` sets up new keys and then signs the image.
+
+```bash
+$ docker trust inspect example/trust-demo
+No signatures or cannot access example/trust-demo
+```
+
+```bash
+$ docker trust sign example/trust-demo:v1
+Signing and pushing trust metadata for example/trust-demo:v1
+Enter passphrase for root key with ID 36cac18:
+Enter passphrase for new repository key with ID 731396b:
+Repeat passphrase for new repository key with ID 731396b:
+Enter passphrase for new targets/alice key with ID 6d52b29:
+Repeat passphrase for new targets/alice key with ID 6d52b29:
+Created signer: alice
+Finished initializing "docker.io/example/trust-demo"
+The push refers to a repository [docker.io/example/trust-demo]
+eed4e566104a: Layer already exists
+77edfb6d1e3c: Layer already exists
+c69f806905c2: Layer already exists
+582f327616f1: Layer already exists
+a3fbb648f0bd: Layer already exists
+5eac2de68a97: Layer already exists
+8d4d1ab5ff74: Layer already exists
+v1: digest: sha256:8f6f460abf0436922df7eb06d28b3cdf733d2cac1a185456c26debbff0839c56 size: 1787
+Signing and pushing trust metadata
+Enter passphrase for targets/alice key with ID 6d52b29:
+Successfully signed "docker.io/example/trust-demo":v1
+```
+
+```bash
+$ docker trust inspect example/trust-demo
+SIGNED TAG          DIGEST                                                             SIGNERS
+v1                  8f6f460abf0436922df7eb06d28b3cdf733d2cac1a185456c26debbff0839c56   alice
+
+List of signers and their KeyIDs:
+
+SIGNER              KEYS
+alice             6d52b29d940f
+
+Administrative keys for example/trust-demo:
+Repository Key:	731396b65eac3ef5ec01406801bdfb70feb40c17808d2222427c18046eb63beb
+Root Key:	70d174714bd1461f6c58cb3ef39087c8fdc7633bb11a98af844fd9a04e208103
+```
+
