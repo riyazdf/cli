@@ -158,6 +158,10 @@ func initNotaryRepoWithSigners(notaryRepo *client.NotaryRepository, newSigner da
 
 // generates an ECDSA key without a GUN for the specified role
 func getOrGenerateNotaryKey(notaryRepo *client.NotaryRepository, role data.RoleName) (data.PublicKey, error) {
+	// use the signer name in the PEM headers if this is a delegation key
+	if data.IsDelegation(role) {
+		role = data.RoleName(notaryRoleToSigner(role))
+	}
 	keys := notaryRepo.CryptoService.ListKeys(role)
 	var err error
 	var key data.PublicKey
