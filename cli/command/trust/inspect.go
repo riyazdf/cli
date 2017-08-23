@@ -103,11 +103,22 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 
 	// This will always have the root and targets information
 	fmt.Fprintf(cli.Out(), "\nAdministrative keys for %s:\n", remote)
-	for name, key := range adminRoleToKeyIDs {
-		fmt.Fprintf(cli.Out(), "%s:\t%s\n", name, key)
-	}
+	printSortedAdminKeys(adminRoleToKeyIDs, cli)
 
 	return nil
+}
+
+func printSortedAdminKeys(adminRoleToKeyIDs map[string]string, cli command.Cli) {
+	keyNames := []string{}
+	for name := range adminRoleToKeyIDs {
+		keyNames = append(keyNames, name)
+	}
+
+	sort.Strings(keyNames)
+
+	for _, keyName := range keyNames {
+		fmt.Fprintf(cli.Out(), "%s:\t%s\n", keyName, adminRoleToKeyIDs[keyName])
+	}
 }
 
 // Extract signer keys and admin keys from the list of roles

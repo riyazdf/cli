@@ -50,8 +50,8 @@ alice               05e87edcaecb
 bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
-Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
+Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
 When alice runs `docker trust revoke`  like so:
@@ -76,8 +76,8 @@ alice               05e87edcaecb
 bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
-Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
+Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
 ### Revoke signatures on all tags in a repository
@@ -97,8 +97,8 @@ alice               05e87edcaecb
 bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
-Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
+Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
 When alice runs `docker trust revoke`  like so:
@@ -125,7 +125,7 @@ alice               05e87edcaecb
 bob                 5600f5ab76a2
 
 Administrative keys for example/trust-demo:
-Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 Repository Key:	ecc457614c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4555b3c6ab02f71e
+Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
