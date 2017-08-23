@@ -110,7 +110,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 
 func printSortedAdminKeys(adminRoleToKeyIDs map[string]string, cli command.Cli) {
 	keyNames := []string{}
-	for name, _ := range adminRoleToKeyIDs {
+	for name := range adminRoleToKeyIDs {
 		keyNames = append(keyNames, name)
 	}
 
