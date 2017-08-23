@@ -11,6 +11,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/registry"
+	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 )
 
@@ -74,4 +75,16 @@ func askConfirm(input io.Reader) bool {
 		return true
 	}
 	return false
+}
+
+func clearChangeList(notaryRepo *client.NotaryRepository) error {
+
+	cl, err := notaryRepo.GetChangelist()
+	if err != nil {
+		return err
+	}
+	if err = cl.Clear(""); err != nil {
+		return err
+	}
+	return nil
 }

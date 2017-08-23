@@ -61,6 +61,10 @@ func revokeTrust(cli command.Cli, remote string, options revokeOptions) error {
 		return err
 	}
 
+	if err = clearChangeList(notaryRepo); err != nil {
+		return err
+	}
+	defer clearChangeList(notaryRepo)
 	if err := revokeTestHelper(notaryRepo, tag); err != nil {
 		return fmt.Errorf("could not remove signature for %s: %s", remote, err)
 	}

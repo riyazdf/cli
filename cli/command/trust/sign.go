@@ -37,6 +37,10 @@ func signImage(cli command.Cli, imageName string) error {
 	if err != nil {
 		return trust.NotaryError(ref.Name(), err)
 	}
+	if err = clearChangeList(notaryRepo); err != nil {
+		return err
+	}
+	defer clearChangeList(notaryRepo)
 	tag, err := getTag(ref)
 	if err != nil {
 		return err
