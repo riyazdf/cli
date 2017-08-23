@@ -332,7 +332,7 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		},
 		{
 			RootRole: data.RootRole{
-				KeyIDs: []string{"key41"},
+				KeyIDs: []string{"key41", "key01"},
 			},
 			Name: data.CanonicalRootRole,
 		},
@@ -360,7 +360,7 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		"bob":   {"key71", "key72"},
 	}
 	expectedAdminRoleToKeyIDs := map[string]string{
-		"Root Key":       "key41",
+		"Root Key":       "key01, key41",
 		"Repository Key": "key31",
 	}
 
@@ -369,7 +369,8 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		roleWithSig := client.RoleWithSignatures{Role: role, Signatures: nil}
 		roleWithSigs = append(roleWithSigs, roleWithSig)
 	}
-	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
-	assert.Equal(t, signerRoleToKeyIDs, expectedSignerRoleToKeyIDs)
-	assert.Equal(t, adminRoleToKeyIDs, expectedAdminRoleToKeyIDs)
+	signerRoleToKeyIDs := getDelegationRoleToKeyMap(roles)
+	assert.Equal(t, expectedSignerRoleToKeyIDs, signerRoleToKeyIDs)
+	adminRoleToKeyIDs := getAdministrativeRolesToKeyMap(roleWithSigs)
+	assert.Equal(t, expectedAdminRoleToKeyIDs, adminRoleToKeyIDs)
 }
