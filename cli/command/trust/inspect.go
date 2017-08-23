@@ -17,8 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const releasedRoleName = "admin"
-
 // trustTagKey represents a unique signed tag and hex-encoded hash pair
 type trustTagKey struct {
 	TagName string
@@ -89,12 +87,20 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		fmt.Fprintf(cli.Out(), "\nNo signatures for %s\n\n", remote)
 	}
 
+	// get the administrative roles
 	roleWithSigs, err := notaryRepo.ListRoles()
 	if err != nil {
 		return fmt.Errorf("No signers for %s", remote)
 	}
+	adminRoleToKeyIDs := getAdministrativeRolesToKeyMap(roleWithSigs)
 
-	signerRoleToKeyIDs, adminRoleToKeyIDs := getSignerAndAdminRolesWithKeyIDs(roleWithSigs)
+	// get delegation roles with the canonical key IDs
+	delegationRoles, err := notaryRepo.GetDelegationRoles()
+	if err != nil {
+		logrus.Debugf("no delegation roles found, or error fetching them for %s: %v", remote, err)
+	}
+	signerRoleToKeyIDs := getDelegationRoleToKeyMap(delegationRoles)
+
 	// If we do not have additional signers, do not display
 	if len(signerRoleToKeyIDs) > 0 {
 		fmt.Fprintf(cli.Out(), "\nList of signers and their KeyIDs:\n\n")
@@ -121,24 +127,33 @@ func printSortedAdminKeys(adminRoleToKeyIDs map[string]string, cli command.Cli) 
 	}
 }
 
-// Extract signer keys and admin keys from the list of roles
-func getSignerAndAdminRolesWithKeyIDs(roleWithSigs []client.RoleWithSignatures) (map[string][]string, map[string]string) {
-	signerRoleToKeyIDs := make(map[string][]string)
+func getAdministrativeRolesToKeyMap(roleWithSigs []client.RoleWithSignatures) map[string]string {
 	adminRoleToKeyIDs := make(map[string]string)
-
 	for _, roleWithSig := range roleWithSigs {
+		sort.Strings(roleWithSig.KeyIDs)
 		switch roleWithSig.Name {
-		case trust.ReleasesRole, data.CanonicalSnapshotRole, data.CanonicalTimestampRole:
-			continue
 		case data.CanonicalTargetsRole:
 			adminRoleToKeyIDs["Repository Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		case data.CanonicalRootRole:
 			adminRoleToKeyIDs["Root Key"] = strings.Join(roleWithSig.KeyIDs, ", ")
 		default:
-			signerRoleToKeyIDs[notaryRoleToSigner(roleWithSig.Name)] = roleWithSig.KeyIDs
+			continue
 		}
 	}
-	return signerRoleToKeyIDs, adminRoleToKeyIDs
+	return adminRoleToKeyIDs
+}
+
+func getDelegationRoleToKeyMap(rawDelegationRoles []data.Role) map[string][]string {
+	signerRoleToKeyIDs := make(map[string][]string)
+	for _, delRole := range rawDelegationRoles {
+		switch delRole.Name {
+		case trust.ReleasesRole, data.CanonicalRootRole, data.CanonicalSnapshotRole, data.CanonicalTargetsRole, data.CanonicalTimestampRole:
+			continue
+		default:
+			signerRoleToKeyIDs[notaryRoleToSigner(delRole.Name)] = delRole.KeyIDs
+		}
+	}
+	return signerRoleToKeyIDs
 }
 
 // aggregate all signers for a "released" hash+tagname pair. To be "released," the tag must have been
@@ -182,7 +197,7 @@ func printSignatures(dockerCli command.Cli, signatureRows trustTagRowList) error
 	for _, sigRow := range signatureRows {
 		formattedSigners := sigRow.Signers
 		if len(formattedSigners) == 0 {
-			formattedSigners = append(formattedSigners, "(Repo Admin)")
+			formattedSigners = append(formattedSigners, fmt.Sprintf("(%s)", releasedRoleName))
 		}
 		formattedTags = append(formattedTags, formatter.SignedTagInfo{
 			Name:    sigRow.TagName,

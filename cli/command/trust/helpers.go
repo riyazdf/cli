@@ -14,6 +14,8 @@ import (
 	"github.com/docker/notary/tuf/data"
 )
 
+const releasedRoleName = "Repo Admin"
+
 func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
 	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)
 	return err
