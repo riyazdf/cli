@@ -65,6 +65,10 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 		return trust.NotaryError(ref.Name(), err)
 	}
 
+	if err = clearChangeList(notaryRepo); err != nil {
+		return err
+	}
+	defer clearChangeList(notaryRepo)
 	tag, err := getTag(ref)
 	if err != nil {
 		return err
