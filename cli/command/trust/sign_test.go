@@ -2,6 +2,7 @@ package trust
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -60,6 +61,11 @@ func TestTrustSignErrors(t *testing.T) {
 			name:          "no-tag",
 			args:          []string{"riyaz/unsigned-img"},
 			expectedError: "No tag specified for riyaz/unsigned-img",
+		},
+		{
+			name:          "digest-reference",
+			args:          []string{"ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2"},
+			expectedError: "cannot use a digest reference for IMAGE:TAG",
 		},
 	}
 	// change to a tmpdir
@@ -213,6 +219,22 @@ func TestGetSignedManifestHashAndSize(t *testing.T) {
 	assert.EqualError(t, err, "client is offline")
 }
 
+func TestGetReleasedTargetHashAndSize(t *testing.T) {
+	oneReleasedTgt := []client.TargetSignedStruct{}
+	// make and append 3 non-released signatures on the "unreleased" target
+	unreleasedTgt := client.Target{Name: "unreleased", Hashes: data.Hashes{notary.SHA256: []byte("hash")}}
+	for _, unreleasedRole := range []string{"targets/a", "targets/b", "targets/c"} {
+		oneReleasedTgt = append(oneReleasedTgt, client.TargetSignedStruct{Role: mockDelegationRoleWithName(unreleasedRole), Target: unreleasedTgt})
+	}
+	_, _, err := getReleasedTargetHashAndSize(oneReleasedTgt, "unreleased")
+	assert.EqualError(t, err, "No valid trust data for unreleased")
+	releasedTgt := client.Target{Name: "released", Hashes: data.Hashes{notary.SHA256: []byte("released-hash")}}
+	oneReleasedTgt = append(oneReleasedTgt, client.TargetSignedStruct{Role: mockDelegationRoleWithName("targets/releases"), Target: releasedTgt})
+	hash, _, _ := getReleasedTargetHashAndSize(oneReleasedTgt, "unreleased")
+	assert.Equal(t, data.Hashes{notary.SHA256: []byte("released-hash")}, hash)
+
+}
+
 func TestCreateTarget(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "notary-test-")
 	assert.NoError(t, err)
@@ -235,4 +257,23 @@ func TestGetOtherSigners(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = getOtherSigners(notaryRepo, "test")
 	assert.EqualError(t, err, "client is offline")
+}
+
+func TestPrintOtherSigners(t *testing.T) {
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	signers := []string{"Alice", "Bob", "Carol"}
+	printOtherSigners(signers)
+	outC := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		outC <- buf.String()
+	}()
+	w.Close()
+	os.Stdout = old
+	out := <-outC
+	assert.EqualValues(t, "Other signers of this tag:\nAlice, Bob, Carol\n", out)
+
 }

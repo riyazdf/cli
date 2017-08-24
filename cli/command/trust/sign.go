@@ -67,10 +67,13 @@ func signImage(cli command.Cli, imageName string) error {
 	}
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, "push")
 	target, err := createTarget(notaryRepo, tag)
-	if err != nil && strings.Contains(err.Error(), "No valid trust data for") {
-		return image.TrustedPush(ctx, cli, repoInfo, ref, *authConfig, requestPrivilege)
-	} else if err != nil {
-		return err
+	if err != nil {
+		switch err := err.(type) {
+		case client.ErrNoSuchTarget, client.ErrRepositoryNotExist:
+			return image.TrustedPush(ctx, cli, repoInfo, ref, *authConfig, requestPrivilege)
+		default:
+			return err
+		}
 	}
 
 	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s\n", imageName)
@@ -107,12 +110,16 @@ func getSignedManifestHashAndSize(notaryRepo *client.NotaryRepository, tag strin
 	if err != nil {
 		return nil, 0, err
 	}
+	return getReleasedTargetHashAndSize(targets, tag)
+}
+
+func getReleasedTargetHashAndSize(targets []client.TargetSignedStruct, tag string) (data.Hashes, int64, error) {
 	for _, tgt := range targets {
 		if isReleasedTarget(tgt.Role.Name) {
 			return tgt.Target.Hashes, tgt.Target.Length, nil
 		}
 	}
-	return nil, 0, fmt.Errorf("No valid trust data for %s", tag)
+	return nil, 0, client.ErrNoSuchTarget(tag)
 }
 
 func getOtherSigners(notaryRepo *client.NotaryRepository, tag string) ([]string, error) {
