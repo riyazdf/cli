@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -275,5 +276,4 @@ func TestPrintOtherSigners(t *testing.T) {
 	os.Stdout = old
 	out := <-outC
 	assert.EqualValues(t, "Other signers of this tag:\nAlice, Bob, Carol\n", out)
-
 }
