@@ -85,13 +85,13 @@ func signImage(cli command.Cli, imageName string) error {
 	}
 
 	fmt.Fprintf(cli.Out(), "Signing and pushing trust metadata for %s\n", imageName)
-	otherSigners, err := getOtherSigners(notaryRepo, tag)
+	existingSigInfo, err := getExistingSignatureInfoForReleasedTag(notaryRepo, tag)
 	if err != nil {
 		return err
 	}
-	printOtherSigners(otherSigners)
 	err = image.AddTargetToAllSignableRoles(notaryRepo, &target)
 	if err == nil {
+		prettyPrintExistingSignatureInfo(cli, existingSigInfo)
 		err = notaryRepo.Publish()
 	}
 	if err != nil {
@@ -129,25 +129,22 @@ func getReleasedTargetHashAndSize(targets []client.TargetSignedStruct, tag strin
 	return nil, 0, client.ErrNoSuchTarget(tag)
 }
 
-func getOtherSigners(notaryRepo *client.NotaryRepository, tag string) ([]string, error) {
+func getExistingSignatureInfoForReleasedTag(notaryRepo *client.NotaryRepository, tag string) (trustTagRow, error) {
 	targets, err := notaryRepo.GetAllTargetMetadataByName(tag)
-	var signers []string
 	if err != nil {
-		return nil, err
+		return trustTagRow{}, err
 	}
-	for _, tgt := range targets {
-		if !isReleasedTarget(tgt.Role.Name) {
-			signers = append(signers, notaryRoleToSigner(tgt.Role.Name))
-		}
+	releasedTargetInfoList := matchReleasedSignatures(targets)
+	if len(releasedTargetInfoList) == 0 {
+		return trustTagRow{}, nil
 	}
-	return signers, err
+	return releasedTargetInfoList[0], nil
 }
 
-func printOtherSigners(otherSigners []string) {
-	if len(otherSigners) != 0 {
-		fmt.Println("Other signers of this tag:")
-		fmt.Println(strings.Join(otherSigners, ", "))
-	}
+func prettyPrintExistingSignatureInfo(cli command.Cli, existingSigInfo trustTagRow) {
+	sort.Strings(existingSigInfo.Signers)
+	joinedSigners := strings.Join(existingSigInfo.Signers, ", ")
+	fmt.Fprintf(cli.Out(), "Existing signatures for tag %s digest %s from:\n%s\n", existingSigInfo.TagName, existingSigInfo.HashHex, joinedSigners)
 }
 
 func initNotaryRepoWithSigners(notaryRepo *client.NotaryRepository, newSigner data.RoleName) error {
