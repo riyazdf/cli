@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/cli/internal/test"
+	"github.com/docker/cli/internal/test/testutil"
 	dockerClient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/testutil"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"

@@ -14,6 +14,9 @@ import (
 	"github.com/docker/notary/passphrase"
 	"github.com/docker/notary/trustpinning"
 	"github.com/docker/notary/tuf/data"
+	"testing"
+
+	"github.com/docker/distribution/reference"
 	"github.com/stretchr/testify/assert"
 )
 
