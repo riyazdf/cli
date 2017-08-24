@@ -1,9 +1,7 @@
 package trust
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -254,31 +252,23 @@ func TestCreateTarget(t *testing.T) {
 	assert.EqualError(t, err, "client is offline")
 }
 
-func TestGetOtherSigners(t *testing.T) {
+func TestGetExistingSignatureInfoForReleasedTag(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "notary-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
 	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
 	assert.NoError(t, err)
-	_, err = getOtherSigners(notaryRepo, "test")
+	_, err = getExistingSignatureInfoForReleasedTag(notaryRepo, "test")
 	assert.EqualError(t, err, "client is offline")
 }
 
-func TestPrintOtherSigners(t *testing.T) {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	signers := []string{"Alice", "Bob", "Carol"}
-	printOtherSigners(signers)
-	outC := make(chan string)
-	go func() {
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		outC <- buf.String()
-	}()
-	w.Close()
-	os.Stdout = old
-	out := <-outC
-	assert.EqualValues(t, "Other signers of this tag:\nAlice, Bob, Carol\n", out)
+func TestPrettyPrintExistingSignatureInfo(t *testing.T) {
+	fakeCli := test.NewFakeCli(&fakeClient{})
+
+	signers := []string{"Bob", "Alice", "Carol"}
+	existingSig := trustTagRow{trustTagKey{"tagName", "abc123"}, signers}
+	prettyPrintExistingSignatureInfo(fakeCli, existingSig)
+
+	assert.Contains(t, fakeCli.OutBuffer().String(), "Existing signatures for tag tagName digest abc123 from:\nAlice, Bob, Carol")
 }
