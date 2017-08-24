@@ -108,7 +108,7 @@ func lookupTrustInfo(cli command.Cli, remote string) error {
 	}
 
 	// This will always have the root and targets information
-	fmt.Fprintf(cli.Out(), "\nAdministrative keys for %s:\n", remote)
+	fmt.Fprintf(cli.Out(), "\nAdministrative keys for %s:\n", strings.Split(remote, ":")[0])
 	printSortedAdminKeys(adminRoleToKeyIDs, cli)
 
 	return nil
