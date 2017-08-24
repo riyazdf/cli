@@ -91,8 +91,7 @@ func signImage(cli command.Cli, imageName string) error {
 		err = notaryRepo.Publish()
 	}
 	if err != nil {
-		fmt.Fprintf(cli.Out(), "Failed to sign %q:%s - %s\n", repoInfo.Name.Name(), tag, err.Error())
-		return trust.NotaryError(repoInfo.Name.Name(), err)
+		return fmt.Errorf("failed to sign %q:%s - %s", repoInfo.Name.Name(), tag, err.Error())
 	}
 	fmt.Fprintf(cli.Out(), "Successfully signed %q:%s\n", repoInfo.Name.Name(), tag)
 	return nil

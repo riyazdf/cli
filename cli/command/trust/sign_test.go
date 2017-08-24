@@ -68,6 +68,11 @@ func TestTrustSignErrors(t *testing.T) {
 			args:          []string{"ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2"},
 			expectedError: "cannot use a digest reference for IMAGE:TAG",
 		},
+		{
+			name:          "no-keys",
+			args:          []string{"ubuntu:latest"},
+			expectedError: "failed to sign \"docker.io/library/ubuntu\":latest - you are not authorized to perform this operation: server returned 401.",
+		},
 	}
 	// change to a tmpdir
 	tmpDir, err := ioutil.TempDir("", "docker-sign-test-")
