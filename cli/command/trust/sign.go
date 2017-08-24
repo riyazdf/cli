@@ -70,6 +70,10 @@ func signImage(cli command.Cli, imageName string) error {
 	if err != nil {
 		switch err := err.(type) {
 		case client.ErrNoSuchTarget, client.ErrRepositoryNotExist:
+			// Fail fast if the image doesn't exist locally
+			if err := checkLocalImageExistence(ctx, cli, imageName); err != nil {
+				return err
+			}
 			return image.TrustedPush(ctx, cli, repoInfo, ref, *authConfig, requestPrivilege)
 		default:
 			return err
