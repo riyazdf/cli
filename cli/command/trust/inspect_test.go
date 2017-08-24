@@ -94,6 +94,8 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
 	// Check for the signer headers
 	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for alpine:")
+	// make sure the tag isn't included
+	assert.NotContains(t, cli.OutBuffer().String(), "Administrative keys for alpine:3.5")
 	assert.Contains(t, cli.OutBuffer().String(), "3.5")
 	assert.Contains(t, cli.OutBuffer().String(), "(Repo Admin)")
 	// no delegations on this repo
@@ -134,6 +136,8 @@ func TestTrustInfo(t *testing.T) {
 	assert.Contains(t, cli.OutBuffer().String(), "SIGNER")
 	assert.Contains(t, cli.OutBuffer().String(), "KEYS")
 	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:")
+	// make sure the tag isn't included
+	assert.NotContains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:unsigned")
 	assert.Contains(t, cli.OutBuffer().String(), "Repository Key")
 	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
 	// all signers have names
