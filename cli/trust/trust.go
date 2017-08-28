@@ -36,7 +36,8 @@ var (
 	ReleasesRole = data.RoleName(path.Join(data.CanonicalTargetsRole.String(), "releases"))
 )
 
-func trustDirectory() string {
+// GetTrustDirectory returns the base trust directory name
+func GetTrustDirectory() string {
 	return filepath.Join(cliconfig.Dir(), "trust")
 }
 
@@ -165,7 +166,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	tr := transport.NewTransport(base, modifiers...)
 
 	return client.NewFileCachedNotaryRepository(
-		trustDirectory(),
+		GetTrustDirectory(),
 		data.GUN(repoInfo.Name.Name()),
 		server,
 		tr,
