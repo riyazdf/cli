@@ -64,7 +64,7 @@ func signImage(cli command.Cli, imageName string) error {
 			}
 
 			fmt.Fprintf(cli.Out(), "Created signer: %s\n", authConfig.Username)
-			fmt.Fprintf(cli.Out(), "Finished initializing %q\n", notaryRepo.GetGUN().String())
+			fmt.Fprintf(cli.Out(), "Finished initializing signed repository for %s\n", imageName)
 		default:
 			return trust.NotaryError(repoInfo.Name.Name(), err)
 		}
