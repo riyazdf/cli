@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newKeyLoadCommand(dockerCli command.Cli) *cobra.Command {
+func newKeyLoadCommand(dockerCli command.Streams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key-load KEY [KEY...] ",
 		Short: "Load a signing key",
@@ -26,7 +26,7 @@ func newKeyLoadCommand(dockerCli command.Cli) *cobra.Command {
 	return cmd
 }
 
-func loadKeys(cli command.Streams, keyPaths []string) error {
+func loadKeys(streams command.Streams, keyPaths []string) error {
 	trustDir := trust.GetTrustDirectory()
 	keyFileStore, err := storage.NewPrivateKeyFileStorage(filepath.Join(trustDir, notary.PrivDir), notary.KeyExtension)
 	if err != nil {
@@ -42,11 +42,11 @@ func loadKeys(cli command.Streams, keyPaths []string) error {
 		}
 		defer from.Close()
 		// Always use a fresh passphrase retriever for each import
-		if err = utils.ImportKeys(from, privKeyImporters, "", "", trust.GetBlankPassphraseRetriever(cli)); err != nil {
-			fmt.Fprintf(cli.Out(), "error importing key from %s: %s\n", keyPath, err)
+		if err = utils.ImportKeys(from, privKeyImporters, "", "", trust.GetBlankPassphraseRetriever(streams)); err != nil {
+			fmt.Fprintf(streams.Out(), "error importing key from %s: %s\n", keyPath, err)
 			lastImportErr = err
 		} else {
-			fmt.Fprintf(cli.Out(), "successfully imported key from %s\n", keyPath)
+			fmt.Fprintf(streams.Out(), "successfully imported key from %s\n", keyPath)
 		}
 	}
 	return lastImportErr
