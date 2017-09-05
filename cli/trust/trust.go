@@ -170,11 +170,13 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 		data.GUN(repoInfo.Name.Name()),
 		server,
 		tr,
-		getPassphraseRetriever(streams),
+		GetFullPassphraseRetriever(streams),
 		trustpinning.TrustPinConfig{})
 }
 
-func getPassphraseRetriever(streams command.Streams) notary.PassRetriever {
+// GetFullPassphraseRetriever returns a passphrase retriever that makes use of environment variables as well as
+// Docker-friendly aliases for TUF role names
+func GetFullPassphraseRetriever(streams command.Streams) notary.PassRetriever {
 	aliasMap := map[string]string{
 		"root":     "root",
 		"snapshot": "repository",
@@ -197,6 +199,14 @@ func getPassphraseRetriever(streams command.Streams) notary.PassRetriever {
 		if v := env["default"]; v != "" && alias != data.CanonicalRootRole.String() {
 			return v, numAttempts > 1, nil
 		}
+		return baseRetriever(keyName, alias, createNew, numAttempts)
+	}
+}
+
+// GetBlankPassphraseRetriever returns a basic passphrase retriever without any aliases or env var support
+func GetBlankPassphraseRetriever(streams command.Streams) notary.PassRetriever {
+	baseRetriever := passphrase.PromptRetrieverWithInOut(streams.In(), streams.Out(), map[string]string{})
+	return func(keyName string, alias string, createNew bool, numAttempts int) (string, bool, error) {
 		return baseRetriever(keyName, alias, createNew, numAttempts)
 	}
 }
