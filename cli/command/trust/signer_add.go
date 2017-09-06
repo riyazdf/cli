@@ -48,7 +48,7 @@ func addSigner(cli command.Cli, options *signerAddOptions) error {
 	}
 
 	if options.keys.Len() < 1 {
-		return fmt.Errorf("path to a valid public key must be provided")
+		return fmt.Errorf("path to a valid public key must be provided using the `--key` flag")
 	}
 
 	for _, imageName := range options.images {
