@@ -25,7 +25,7 @@ func TestTrustSignerAddErrors(t *testing.T) {
 		{
 			name:          "no-key",
 			args:          []string{"foo", "bar"},
-			expectedError: "path to a valid public key must be provided",
+			expectedError: "path to a valid public key must be provided using the `--key` flag",
 		},
 		{
 			name:          "reserved-releases-signer-add",
