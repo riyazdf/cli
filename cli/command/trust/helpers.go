@@ -17,6 +17,7 @@ import (
 )
 
 const releasedRoleName = "Repo Admin"
+const releasesRoleTUFName = "targets/releases"
 
 func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
 	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)

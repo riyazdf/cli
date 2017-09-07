@@ -19,6 +19,7 @@ func NewTrustCommand(dockerCli command.Cli) *cobra.Command {
 		newRevokeCommand(dockerCli),
 		newSignCommand(dockerCli),
 		newSignerAddCommand(dockerCli),
+		newSignerRemoveCommand(dockerCli),
 	)
 	return cmd
 }
