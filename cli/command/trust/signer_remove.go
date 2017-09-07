@@ -106,7 +106,7 @@ func removeSingleSigner(cli command.Cli, image, signerName string, forceYes bool
 			return nil
 		}
 	} else if err != nil {
-		fmt.Fprintf(cli.Out(), err.Error())
+		fmt.Fprintln(cli.Out(), err.Error())
 	}
 	if err = notaryRepo.RemoveDelegationKeys(releasesRoleTUFName, role.KeyIDs); err != nil {
 		return err
