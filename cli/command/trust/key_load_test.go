@@ -2,6 +2,7 @@ package trust
 
 import (
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -124,4 +125,27 @@ func TestLoadKeyFromPath(t *testing.T) {
 	assert.NoError(t, err)
 	fixturePEM, _ := pem.Decode(privKeyFixture)
 	assert.Equal(t, fixturePEM.Bytes, decryptedKey.Private())
+}
+
+func TestLoadKeyTooPermissive(t *testing.T) {
+	privKeyDir, err := ioutil.TempDir("", "key-load-test-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(privKeyDir)
+	privKeyFilepath := filepath.Join(privKeyDir, "privkey.pem")
+	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0777))
+
+	keyStorageDir, err := ioutil.TempDir("", "loaded-keys-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(keyStorageDir)
+
+	passwd := "password"
+	cannedPasswordRetriever := passphrase.ConstantRetriever(passwd)
+	keyFileStore, err := storage.NewPrivateKeyFileStorage(keyStorageDir, notary.KeyExtension)
+	assert.NoError(t, err)
+	privKeyImporters := []utils.Importer{keyFileStore}
+
+	// import the key to our keyStorageDir
+	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	assert.Error(t, err)
+	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 600", privKeyFilepath), err.Error())
 }

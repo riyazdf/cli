@@ -43,7 +43,7 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 			fmt.Fprintf(streams.Out(), "error importing key from %s: %s\n", keyPath, err)
 			errKeyPaths = append(errKeyPaths, keyPath)
 		} else {
-			fmt.Fprintf(streams.Out(), "successfully imported key from %s\n", keyPath)
+			fmt.Fprintf(streams.Out(), "Successfully imported key from %s\n", keyPath)
 		}
 	}
 	if len(errKeyPaths) > 0 {
@@ -53,6 +53,13 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 }
 
 func loadKeyFromPath(privKeyImporters []utils.Importer, keyPath string, passRet notary.PassRetriever) error {
+	fileInfo, err := os.Stat(keyPath)
+	if err != nil {
+		return err
+	}
+	if fileInfo.Mode() > os.FileMode(notary.PrivExecPerms) {
+		return fmt.Errorf("private key permission from %s should be set to 600", keyPath)
+	}
 	from, err := os.OpenFile(keyPath, os.O_RDONLY, notary.PrivExecPerms)
 	if err != nil {
 		return err
