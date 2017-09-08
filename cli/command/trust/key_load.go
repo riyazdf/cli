@@ -36,13 +36,9 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 
 	var lastImportErr error
 	for _, keyPath := range keyPaths {
-		from, err := os.OpenFile(keyPath, os.O_RDONLY, notary.PrivExecPerms)
-		if err != nil {
-			return err
-		}
-		defer from.Close()
 		// Always use a fresh passphrase retriever for each import
-		if err = utils.ImportKeys(from, privKeyImporters, "", "", trust.GetBlankPassphraseRetriever(streams)); err != nil {
+		passRet := trust.GetBlankPassphraseRetriever(streams)
+		if err := loadKeyFromPath(privKeyImporters, keyPath, passRet); err != nil {
 			fmt.Fprintf(streams.Out(), "error importing key from %s: %s\n", keyPath, err)
 			lastImportErr = err
 		} else {
@@ -50,4 +46,14 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 		}
 	}
 	return lastImportErr
+}
+
+func loadKeyFromPath(privKeyImporters []utils.Importer, keyPath string, passRet notary.PassRetriever) error {
+	from, err := os.OpenFile(keyPath, os.O_RDONLY, notary.PrivExecPerms)
+	if err != nil {
+		return err
+	}
+	defer from.Close()
+	// Always use a fresh passphrase retriever for each import
+	return utils.ImportKeys(from, privKeyImporters, "signer", "", passRet)
 }
