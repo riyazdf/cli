@@ -31,7 +31,12 @@ func TestTrustKeyLoadErrors(t *testing.T) {
 		{
 			name:          "not-a-key",
 			args:          []string{"iamnotakey"},
-			expectedError: "no such file or directory",
+			expectedError: "Error importing keys from: iamnotakey",
+		},
+		{
+			name:          "multiple-not-a-key",
+			args:          []string{"iamnotakey", "alsonotakey"},
+			expectedError: "Error importing keys from: iamnotakey, alsonotakey",
 		},
 	}
 	tmpDir, err := ioutil.TempDir("", "docker-key-load-test-")

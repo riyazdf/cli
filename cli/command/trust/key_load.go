@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
@@ -34,18 +35,21 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 	}
 	privKeyImporters := []utils.Importer{keyFileStore}
 
-	var lastImportErr error
+	var errKeyPaths []string
 	for _, keyPath := range keyPaths {
 		// Always use a fresh passphrase retriever for each import
 		passRet := trust.GetBlankPassphraseRetriever(streams)
 		if err := loadKeyFromPath(privKeyImporters, keyPath, passRet); err != nil {
 			fmt.Fprintf(streams.Out(), "error importing key from %s: %s\n", keyPath, err)
-			lastImportErr = err
+			errKeyPaths = append(errKeyPaths, keyPath)
 		} else {
 			fmt.Fprintf(streams.Out(), "successfully imported key from %s\n", keyPath)
 		}
 	}
-	return lastImportErr
+	if len(errKeyPaths) > 0 {
+		return fmt.Errorf("Error importing keys from: %s", strings.Join(errKeyPaths, ", "))
+	}
+	return nil
 }
 
 func loadKeyFromPath(privKeyImporters []utils.Importer, keyPath string, passRet notary.PassRetriever) error {
