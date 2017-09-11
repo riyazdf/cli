@@ -87,7 +87,7 @@ func (scs simpleCredentialStore) SetRefreshToken(*url.URL, string, string) {
 // GetNotaryRepository returns a NotaryRepository which stores all the
 // information needed to operate on a notary repository.
 // It creates an HTTP transport providing authentication support.
-func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (*client.NotaryRepository, error) {
+func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (client.Repository, error) {
 	server, err := Server(repoInfo.Index)
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
 	tr := transport.NewTransport(base, modifiers...)
 
-	return client.NewFileCachedNotaryRepository(
+	return client.NewFileCachedRepository(
 		GetTrustDirectory(),
 		data.GUN(repoInfo.Name.Name()),
 		server,
@@ -244,12 +244,12 @@ func NotaryError(repoName string, err error) error {
 
 // GetSignableRoles returns a list of roles for which we have valid signing
 // keys, given a notary repository and a target
-func GetSignableRoles(repo *client.NotaryRepository, target *client.Target) ([]data.RoleName, error) {
+func GetSignableRoles(repo client.Repository, target *client.Target) ([]data.RoleName, error) {
 	var signableRoles []data.RoleName
 
 	// translate the full key names, which includes the GUN, into just the key IDs
 	allCanonicalKeyIDs := make(map[string]struct{})
-	for fullKeyID := range repo.CryptoService.ListAllKeys() {
+	for fullKeyID := range repo.GetCryptoService().ListAllKeys() {
 		allCanonicalKeyIDs[path.Base(fullKeyID)] = struct{}{}
 	}
 
