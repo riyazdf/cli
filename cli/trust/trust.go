@@ -2,6 +2,7 @@ package trust
 
 import (
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/docker/cli/cli/command"
 	cliconfig "github.com/docker/cli/cli/config"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/auth/challenge"
 	"github.com/docker/distribution/registry/client/transport"
@@ -27,6 +29,7 @@ import (
 	"github.com/docker/notary/trustpinning"
 	"github.com/docker/notary/tuf/data"
 	"github.com/docker/notary/tuf/signed"
+	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -34,6 +37,10 @@ import (
 var (
 	// ReleasesRole is the role named "releases"
 	ReleasesRole = data.RoleName(path.Join(data.CanonicalTargetsRole.String(), "releases"))
+	// ActionsPullOnly defines the actions for read-only interactions with a Notary Repository
+	ActionsPullOnly = []string{"pull"}
+	// ActionsPushAndPull defines the actions for read-write interactions with a Notary Repository
+	ActionsPushAndPull = []string{"pull", "push"}
 )
 
 // GetTrustDirectory returns the base trust directory name
@@ -87,7 +94,7 @@ func (scs simpleCredentialStore) SetRefreshToken(*url.URL, string, string) {
 // GetNotaryRepository returns a NotaryRepository which stores all the
 // information needed to operate on a notary repository.
 // It creates an HTTP transport providing authentication support.
-func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryInfo, authConfig types.AuthConfig, actions ...string) (client.Repository, error) {
+func GetNotaryRepository(in io.Reader, out io.Writer, userAgent string, repoInfo *registry.RepositoryInfo, authConfig *types.AuthConfig, actions ...string) (client.Repository, error) {
 	server, err := Server(repoInfo.Index)
 	if err != nil {
 		return nil, err
@@ -120,7 +127,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 	}
 
 	// Skip configuration headers since request is not going to Docker daemon
-	modifiers := registry.DockerHeaders(command.UserAgent(), http.Header{})
+	modifiers := registry.DockerHeaders(userAgent, http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
 	pingClient := &http.Client{
 		Transport: authTransport,
@@ -153,7 +160,7 @@ func GetNotaryRepository(streams command.Streams, repoInfo *registry.RepositoryI
 		Actions:    actions,
 		Class:      repoInfo.Class,
 	}
-	creds := simpleCredentialStore{auth: authConfig}
+	creds := simpleCredentialStore{auth: *authConfig}
 	tokenHandlerOptions := auth.TokenHandlerOptions{
 		Transport:   authTransport,
 		Credentials: creds,
@@ -183,7 +190,7 @@ func GetFullPassphraseRetriever(streams command.Streams) notary.PassRetriever {
 		"targets":  "repository",
 		"default":  "repository",
 	}
-	baseRetriever := passphrase.PromptRetrieverWithInOut(streams.In(), streams.Out(), aliasMap)
+	baseRetriever := passphrase.PromptRetrieverWithInOut(in, out, aliasMap)
 	env := map[string]string{
 		"root":     os.Getenv("DOCKER_CONTENT_TRUST_ROOT_PASSPHRASE"),
 		"snapshot": os.Getenv("DOCKER_CONTENT_TRUST_REPOSITORY_PASSPHRASE"),
@@ -288,4 +295,43 @@ func GetSignableRoles(repo client.Repository, target *client.Target) ([]data.Rol
 
 	return signableRoles, nil
 
+}
+
+// ImageRefAndAuth contains all reference information and the auth config for an image request
+type ImageRefAndAuth struct {
+	authConfig *types.AuthConfig
+	reference  reference.Named
+	repoInfo   *registry.RepositoryInfo
+	tag        string
+	digest     digest.Digest
+}
+
+// NewImageRefAndAuth creates a new ImageRefAndAuth struct
+func NewImageRefAndAuth(authConfig *types.AuthConfig, reference reference.Named, repoInfo *registry.RepositoryInfo, tag string, digest digest.Digest) *ImageRefAndAuth {
+	return &ImageRefAndAuth{authConfig, reference, repoInfo, tag, digest}
+}
+
+// AuthConfig returns the auth information (username, etc) for a given ImageRefAndAuth
+func (imgRefAuth *ImageRefAndAuth) AuthConfig() *types.AuthConfig {
+	return imgRefAuth.authConfig
+}
+
+// Reference returns the Image reference for a given ImageRefAndAuth
+func (imgRefAuth *ImageRefAndAuth) Reference() reference.Named {
+	return imgRefAuth.reference
+}
+
+// RepoInfo returns the repository information for a given ImageRefAndAuth
+func (imgRefAuth *ImageRefAndAuth) RepoInfo() *registry.RepositoryInfo {
+	return imgRefAuth.repoInfo
+}
+
+// Tag returns the Image tag for a given ImageRefAndAuth
+func (imgRefAuth *ImageRefAndAuth) Tag() string {
+	return imgRefAuth.tag
+}
+
+// Digest returns the Image digest for a given ImageRefAndAuth
+func (imgRefAuth *ImageRefAndAuth) Digest() digest.Digest {
+	return imgRefAuth.digest
 }
