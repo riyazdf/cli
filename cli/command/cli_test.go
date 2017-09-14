@@ -6,7 +6,6 @@ import (
 
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/flags"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
@@ -55,20 +54,4 @@ func patchEnvVariable(t *testing.T, key, value string) func() {
 		}
 		require.NoError(t, os.Setenv(key, oldValue))
 	}
-}
-func TestGetTag(t *testing.T) {
-	ref, err := reference.ParseNormalizedNamed("ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2")
-	assert.NoError(t, err)
-	tag := getTag(ref)
-	assert.Equal(t, "", tag)
-
-	ref, err = reference.ParseNormalizedNamed("alpine:latest")
-	assert.NoError(t, err)
-	tag = getTag(ref)
-	assert.Equal(t, tag, "latest")
-
-	ref, err = reference.ParseNormalizedNamed("alpine")
-	assert.NoError(t, err)
-	tag = getTag(ref)
-	assert.Equal(t, tag, "")
 }
