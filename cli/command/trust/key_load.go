@@ -37,6 +37,8 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 
 	var errKeyPaths []string
 	for _, keyPath := range keyPaths {
+		fmt.Fprintf(streams.Out(), "\nLoading key from \"%s\"...\n", keyPath)
+
 		// Always use a fresh passphrase retriever for each import
 		passRet := trust.GetBlankPassphraseRetriever(streams)
 		if err := loadKeyFromPath(privKeyImporters, keyPath, passRet); err != nil {
@@ -65,6 +67,5 @@ func loadKeyFromPath(privKeyImporters []utils.Importer, keyPath string, passRet 
 		return err
 	}
 	defer from.Close()
-	// Always use a fresh passphrase retriever for each import
 	return utils.ImportKeys(from, privKeyImporters, "signer", "", passRet)
 }
