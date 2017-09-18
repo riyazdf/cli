@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/docker/cli/cli/internal/test"
-	"github.com/docker/docker/pkg/testutil"
+	"github.com/docker/cli/internal/test"
+	"github.com/docker/cli/internal/test/testutil"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 	"github.com/stretchr/testify/assert"
@@ -57,6 +57,7 @@ func TestTrustSignerRemoveErrors(t *testing.T) {
 	}
 	for _, tc := range testCasesWithOutput {
 		cli := test.NewFakeCli(&fakeClient{})
+		cli.SetNotaryClient(getOfflineNotaryRepository)
 		cmd := newSignerRemoveCommand(cli)
 		cmd.SetArgs(tc.args)
 		cmd.Execute()
@@ -67,20 +68,22 @@ func TestTrustSignerRemoveErrors(t *testing.T) {
 
 func TestRemoveSingleSigner(t *testing.T) {
 	cli := test.NewFakeCli(&fakeClient{})
-	err := removeSingleSigner(cli, "eiais/test2", "test", true)
-	assert.EqualError(t, err, "No signer test for image eiais/test2")
-	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"test\" from eiais/test2...\n")
-	err = removeSingleSigner(cli, "eiais/test2", "releases", true)
+	cli.SetNotaryClient(getLoadedNotaryRepository)
+	err := removeSingleSigner(cli, "signed-repo", "test", true)
+	assert.EqualError(t, err, "No signer test for image signed-repo")
+	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"test\" from signed-repo...\n")
+	err = removeSingleSigner(cli, "signed-repo", "releases", true)
 	assert.EqualError(t, err, "releases is a reserved keyword and cannot be removed")
-	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"releases\" from eiais/test2...\n")
+	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"releases\" from signed-repo...\n")
 }
 
 func TestRemoveMultipleSigners(t *testing.T) {
 	cli := test.NewFakeCli(&fakeClient{})
-	err := removeSigner(cli, "test", []string{"repo1", "repo2"}, &signerRemoveOptions{forceYes: true})
-	assert.EqualError(t, err, "Error removing signer from: repo1, repo2")
+	cli.SetNotaryClient(getLoadedNotaryRepository)
+	err := removeSigner(cli, "test", []string{"signed-repo", "signed-repo"}, &signerRemoveOptions{forceYes: true})
+	assert.EqualError(t, err, "Error removing signer from: signed-repo, signed-repo")
 	assert.Contains(t, cli.OutBuffer().String(),
-		"\nRemoving signer \"test\" from repo1...\nError retrieving signers for repo1\n\nRemoving signer \"test\" from repo2...\nError retrieving signers for repo2")
+		"\nRemoving signer \"test\" from signed-repo...\nNo signer test for image signed-repo\n\nRemoving signer \"test\" from signed-repo...\nNo signer test for image signed-repo")
 }
 
 func TestIsLastSignerForReleases(t *testing.T) {
@@ -107,5 +110,4 @@ func TestIsLastSignerForReleases(t *testing.T) {
 	allrole = []client.RoleWithSignatures{releaserole}
 	lastsigner, _ = isLastSignerForReleases(role, allrole)
 	assert.Equal(t, false, lastsigner)
-
 }
