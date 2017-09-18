@@ -21,23 +21,27 @@ import (
 
 func TestTrustKeyLoadErrors(t *testing.T) {
 	testCases := []struct {
-		name          string
-		args          []string
-		expectedError string
+		name           string
+		args           []string
+		expectedError  string
+		expectedOutput string
 	}{
 		{
-			name:          "not-enough-args",
-			expectedError: "requires at least 1 argument",
+			name:           "not-enough-args",
+			expectedError:  "requires at least 1 argument",
+			expectedOutput: "",
 		},
 		{
-			name:          "not-a-key",
-			args:          []string{"iamnotakey"},
-			expectedError: "Error importing keys from: iamnotakey",
+			name:           "not-a-key",
+			args:           []string{"iamnotakey"},
+			expectedError:  "Error importing keys from: iamnotakey",
+			expectedOutput: "\nLoading key from \"iamnotakey\"...\nerror importing key from iamnotakey: stat iamnotakey: no such file or directory",
 		},
 		{
-			name:          "multiple-not-a-key",
-			args:          []string{"iamnotakey", "alsonotakey"},
-			expectedError: "Error importing keys from: iamnotakey, alsonotakey",
+			name:           "multiple-not-a-key",
+			args:           []string{"iamnotakey", "alsonotakey"},
+			expectedError:  "Error importing keys from: iamnotakey, alsonotakey",
+			expectedOutput: "\nLoading key from \"iamnotakey\"...\nerror importing key from iamnotakey: stat iamnotakey: no such file or directory\n\nLoading key from \"alsonotakey\"...\n",
 		},
 	}
 	tmpDir, err := ioutil.TempDir("", "docker-key-load-test-")
@@ -46,11 +50,12 @@ func TestTrustKeyLoadErrors(t *testing.T) {
 	config.SetDir(tmpDir)
 
 	for _, tc := range testCases {
-		cmd := newKeyLoadCommand(
-			test.NewFakeCli(&fakeClient{}))
+		cli := test.NewFakeCli(&fakeClient{})
+		cmd := newKeyLoadCommand(cli)
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
+		assert.Contains(t, cli.OutBuffer().String(), tc.expectedOutput)
 	}
 }
 

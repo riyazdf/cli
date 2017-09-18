@@ -69,8 +69,18 @@ func TestRemoveSingleSigner(t *testing.T) {
 	cli := test.NewFakeCli(&fakeClient{})
 	err := removeSingleSigner(cli, "eiais/test2", "test", true)
 	assert.EqualError(t, err, "No signer test for image eiais/test2")
+	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"test\" from eiais/test2...\n")
 	err = removeSingleSigner(cli, "eiais/test2", "releases", true)
 	assert.EqualError(t, err, "releases is a reserved keyword and cannot be removed")
+	assert.Contains(t, cli.OutBuffer().String(), "\nRemoving signer \"releases\" from eiais/test2...\n")
+}
+
+func TestRemoveMultipleSigners(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	err := removeSigner(cli, "test", []string{"repo1", "repo2"}, &signerRemoveOptions{forceYes: true})
+	assert.EqualError(t, err, "Error removing signer from: repo1, repo2")
+	assert.Contains(t, cli.OutBuffer().String(),
+		"\nRemoving signer \"test\" from repo1...\nError retrieving signers for repo1\n\nRemoving signer \"test\" from repo2...\nError retrieving signers for repo2")
 }
 
 func TestIsLastSignerForReleases(t *testing.T) {
