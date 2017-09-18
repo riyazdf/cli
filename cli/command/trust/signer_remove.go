@@ -3,6 +3,7 @@ package trust
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
@@ -32,12 +33,16 @@ func newSignerRemoveCommand(dockerCli command.Cli) *cobra.Command {
 }
 
 func removeSigner(cli command.Cli, signer string, images []string, options *signerRemoveOptions) error {
+	var errImages []string
 	for _, image := range images {
 		if err := removeSingleSigner(cli, image, signer, options.forceYes); err != nil {
-			return err
+			fmt.Fprintln(cli.Out(), err.Error())
+			errImages = append(errImages, image)
 		}
 	}
-
+	if len(errImages) > 0 {
+		return fmt.Errorf("Error adding signer to: %s", strings.Join(errImages, ", "))
+	}
 	return nil
 }
 

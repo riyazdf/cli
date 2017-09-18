@@ -26,6 +26,19 @@ func TestTrustSignerRemoveErrors(t *testing.T) {
 			args:          []string{"user"},
 			expectedError: "requires at least 2 arguments",
 		},
+	}
+	for _, tc := range testCases {
+		cmd := newSignerRemoveCommand(
+			test.NewFakeCli(&fakeClient{}))
+		cmd.SetArgs(tc.args)
+		cmd.SetOutput(ioutil.Discard)
+		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
+	}
+	testCasesWithOutput := []struct {
+		name          string
+		args          []string
+		expectedError string
+	}{
 		{
 			name:          "not-an-image",
 			args:          []string{"user", "notanimage"},
@@ -42,13 +55,14 @@ func TestTrustSignerRemoveErrors(t *testing.T) {
 			expectedError: "invalid reference format",
 		},
 	}
-	for _, tc := range testCases {
-		cmd := newSignerRemoveCommand(
-			test.NewFakeCli(&fakeClient{}))
+	for _, tc := range testCasesWithOutput {
+		cli := test.NewFakeCli(&fakeClient{})
+		cmd := newSignerRemoveCommand(cli)
 		cmd.SetArgs(tc.args)
-		cmd.SetOutput(ioutil.Discard)
-		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
+		cmd.Execute()
+		assert.Contains(t, cli.OutBuffer().String(), tc.expectedError)
 	}
+
 }
 
 func TestRemoveSingleSigner(t *testing.T) {
