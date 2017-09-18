@@ -69,6 +69,8 @@ func isLastSignerForReleases(roleWithSig data.Role, allRoles []client.RoleWithSi
 }
 
 func removeSingleSigner(cli command.Cli, image, signerName string, forceYes bool) error {
+	fmt.Fprintf(cli.Out(), "\nRemoving signer \"%s\" from %s...\n", signerName, image)
+
 	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, image)
 	if err != nil {
 		return err
