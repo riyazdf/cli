@@ -41,7 +41,7 @@ func removeSigner(cli command.Cli, signer string, images []string, options *sign
 		}
 	}
 	if len(errImages) > 0 {
-		return fmt.Errorf("Error adding signer to: %s", strings.Join(errImages, ", "))
+		return fmt.Errorf("Error removing signer from: %s", strings.Join(errImages, ", "))
 	}
 	return nil
 }
