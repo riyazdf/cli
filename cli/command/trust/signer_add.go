@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
@@ -51,17 +52,24 @@ func addSigner(cli command.Cli, options *signerAddOptions) error {
 		return fmt.Errorf("path to a valid public key must be provided using the `--key` flag")
 	}
 
+	var errImages []string
 	for _, imageName := range options.images {
 		if err := addSignerToImage(cli, signerName, imageName, options.keys.GetAll()); err != nil {
-			fmt.Fprintf(cli.Out(), "Failed to add signer to %s: %s\n", imageName, err)
-			continue
+			fmt.Fprintln(cli.Out(), err.Error())
+			errImages = append(errImages, imageName)
+		} else {
+			fmt.Fprintf(cli.Out(), "Successfully added signer: %s to %s\n", signerName, imageName)
 		}
-		fmt.Fprintf(cli.Out(), "Successfully added signer: %s to %s\n", signerName, imageName)
+	}
+	if len(errImages) > 0 {
+		return fmt.Errorf("Failed to add signer to: %s", strings.Join(errImages, ", "))
 	}
 	return nil
 }
 
 func addSignerToImage(cli command.Cli, signerName string, imageName string, keyPaths []string) error {
+	fmt.Fprintf(cli.Out(), "\nAdding signer \"%s\" to %s...\n", signerName, imageName)
+
 	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, imageName)
 	if err != nil {
 		return err
@@ -85,7 +93,6 @@ func addSignerToImage(cli command.Cli, signerName string, imageName string, keyP
 		}
 	}
 
-	fmt.Fprintf(cli.Out(), "\nAdding signer \"%s\" to %s...\n", signerName, imageName)
 	newSignerRoleName := data.RoleName(path.Join(data.CanonicalTargetsRole.String(), signerName))
 
 	signerPubKeys, err := ingestPublicKeys(keyPaths)
