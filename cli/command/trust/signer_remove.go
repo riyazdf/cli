@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,8 @@ import (
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/docker/api/types"
+	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 	"github.com/spf13/cobra"
@@ -71,17 +74,22 @@ func isLastSignerForReleases(roleWithSig data.Role, allRoles []client.RoleWithSi
 func removeSingleSigner(cli command.Cli, image, signerName string, forceYes bool) error {
 	fmt.Fprintf(cli.Out(), "\nRemoving signer \"%s\" from %s...\n", signerName, image)
 
-	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, image)
+	ctx := context.Background()
+	authResolver := func(ctx context.Context, index *registrytypes.IndexInfo) types.AuthConfig {
+		return command.ResolveAuthConfig(ctx, cli, index)
+	}
+	imgRefAndAuth, err := trust.GetImageReferencesAndAuth(ctx, authResolver, image)
 	if err != nil {
 		return err
 	}
+
 	signerDelegation := data.RoleName("targets/" + signerName)
 	if signerDelegation == releasesRoleTUFName {
 		return fmt.Errorf("releases is a reserved keyword and cannot be removed")
 	}
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, *authConfig, "push", "pull")
+	notaryRepo, err := cli.NotaryClient(*imgRefAndAuth, trust.ActionsPushAndPull)
 	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+		return trust.NotaryError(imgRefAndAuth.Reference().Name(), err)
 	}
 	delegationRoles, err := notaryRepo.GetDelegationRoles()
 	if err != nil {

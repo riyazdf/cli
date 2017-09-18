@@ -1,58 +1,16 @@
 package trust
 
 import (
-	"context"
-	"fmt"
-	"io"
 	"sort"
 	"strings"
 
-	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/trust"
-	"github.com/docker/distribution/reference"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/registry"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 )
 
 const releasedRoleName = "Repo Admin"
 const releasesRoleTUFName = "targets/releases"
-
-func checkLocalImageExistence(ctx context.Context, cli command.Cli, imageName string) error {
-	_, _, err := cli.Client().ImageInspectWithRaw(ctx, imageName)
-	return err
-}
-
-func getImageReferencesAndAuth(cli command.Cli, imgName string) (context.Context, reference.Named, *registry.RepositoryInfo, *types.AuthConfig, error) {
-	ref, err := reference.ParseNormalizedNamed(imgName)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	// Resolve the Repository name from fqn to RepositoryInfo
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return nil, nil, nil, nil, err
-	}
-
-	ctx := context.Background()
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-	return ctx, ref, repoInfo, &authConfig, err
-}
-
-func getTag(ref reference.Named) (string, error) {
-	var tag string
-	switch x := ref.(type) {
-	case reference.Canonical:
-		return "", fmt.Errorf("cannot use a digest reference for IMAGE:TAG")
-	case reference.NamedTagged:
-		tag = x.Tag()
-	default:
-		tag = ""
-	}
-	return tag, nil
-}
 
 // check if a role name is "released": either targets/releases or targets TUF roles
 func isReleasedTarget(role data.RoleName) bool {
@@ -68,49 +26,34 @@ func notaryRoleToSigner(tufRole data.RoleName) string {
 	return strings.TrimPrefix(tufRole.String(), "targets/")
 }
 
-func askConfirm(input io.Reader) bool {
-	var res string
-	if _, err := fmt.Fscanln(input, &res); err != nil {
-		return false
-	}
-	if strings.EqualFold(res, "y") || strings.EqualFold(res, "yes") {
-		return true
-	}
-	return false
-}
-
-func clearChangeList(notaryRepo *client.NotaryRepository) error {
-
+func clearChangeList(notaryRepo client.Repository) error {
 	cl, err := notaryRepo.GetChangelist()
 	if err != nil {
 		return err
 	}
-	if err = cl.Clear(""); err != nil {
-		return err
-	}
-	return nil
+	return cl.Clear("")
 }
 
 // generates an ECDSA key without a GUN for the specified role
-func getOrGenerateNotaryKey(notaryRepo *client.NotaryRepository, role data.RoleName) (data.PublicKey, error) {
+func getOrGenerateNotaryKey(notaryRepo client.Repository, role data.RoleName) (data.PublicKey, error) {
 	// use the signer name in the PEM headers if this is a delegation key
 	if data.IsDelegation(role) {
 		role = data.RoleName(notaryRoleToSigner(role))
 	}
-	keys := notaryRepo.CryptoService.ListKeys(role)
+	keys := notaryRepo.GetCryptoService().ListKeys(role)
 	var err error
 	var key data.PublicKey
 	// always select the first key by ID
 	if len(keys) > 0 {
 		sort.Strings(keys)
 		keyID := keys[0]
-		privKey, _, err := notaryRepo.CryptoService.GetPrivateKey(keyID)
+		privKey, _, err := notaryRepo.GetCryptoService().GetPrivateKey(keyID)
 		if err != nil {
 			return nil, err
 		}
 		key = data.PublicKeyFromPrivate(privKey)
 	} else {
-		key, err = notaryRepo.CryptoService.Create(role, "", data.ECDSAKey)
+		key, err = notaryRepo.GetCryptoService().Create(role, "", data.ECDSAKey)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +62,7 @@ func getOrGenerateNotaryKey(notaryRepo *client.NotaryRepository, role data.RoleN
 }
 
 // stages changes to add a signer with the specified name and key(s).  Adds to targets/<name> and targets/releases
-func addStagedSigner(notaryRepo *client.NotaryRepository, newSigner data.RoleName, signerKeys []data.PublicKey) {
+func addStagedSigner(notaryRepo client.Repository, newSigner data.RoleName, signerKeys []data.PublicKey) {
 	// create targets/<username>
 	notaryRepo.AddDelegationRoleAndKeys(newSigner, signerKeys)
 	notaryRepo.AddDelegationPaths(newSigner, []string{""})
@@ -129,7 +72,7 @@ func addStagedSigner(notaryRepo *client.NotaryRepository, newSigner data.RoleNam
 	notaryRepo.AddDelegationPaths(trust.ReleasesRole, []string{""})
 }
 
-func getOrGenerateRootKeyAndInitRepo(notaryRepo *client.NotaryRepository) error {
+func getOrGenerateRootKeyAndInitRepo(notaryRepo client.Repository) error {
 	rootKey, err := getOrGenerateNotaryKey(notaryRepo, data.CanonicalRootRole)
 	if err != nil {
 		return err

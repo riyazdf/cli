@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/internal/test"
-	"github.com/docker/docker/pkg/testutil"
+	"github.com/docker/cli/internal/test"
+	"github.com/docker/cli/internal/test/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,8 +39,9 @@ func TestTrustSignerAddErrors(t *testing.T) {
 	config.SetDir(tmpDir)
 
 	for _, tc := range testCases {
-		cmd := newSignerAddCommand(
-			test.NewFakeCli(&fakeClient{}))
+		cli := test.NewFakeCli(&fakeClient{})
+		cli.SetNotaryClient(getOfflineNotaryRepository)
+		cmd := newSignerAddCommand(cli)
 		cmd.SetArgs(tc.args)
 		cmd.SetOutput(ioutil.Discard)
 		testutil.ErrorContains(t, cmd.Execute(), tc.expectedError)
@@ -58,6 +59,7 @@ func TestSignerAddCommandNoTargetsKey(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getEmptyTargetsNotaryRepository)
 	cmd := newSignerAddCommand(cli)
 	cmd.SetArgs([]string{"--key", tmpfile.Name(), "alice", "alpine", "linuxkit/alpine"})
 
@@ -78,6 +80,7 @@ func TestSignerAddCommandBadKeyPath(t *testing.T) {
 	config.SetDir(tmpDir)
 
 	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getEmptyTargetsNotaryRepository)
 	cmd := newSignerAddCommand(cli)
 	cmd.SetArgs([]string{"--key", "/path/to/key.pem", "alice", "alpine"})
 
@@ -95,6 +98,7 @@ func TestSignerAddCommandInvalidRepoName(t *testing.T) {
 	config.SetDir(tmpDir)
 
 	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getUninitializedNotaryRepository)
 	cmd := newSignerAddCommand(cli)
 	imageName := "870d292919d01a0af7e7f056271dc78792c05f55f49b9b9012b6d89725bd9abd"
 	cmd.SetArgs([]string{"--key", "/path/to/key.pem", "alice", imageName})

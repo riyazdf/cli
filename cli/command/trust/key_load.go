@@ -40,7 +40,7 @@ func loadKeys(streams command.Streams, keyPaths []string) error {
 		fmt.Fprintf(streams.Out(), "\nLoading key from \"%s\"...\n", keyPath)
 
 		// Always use a fresh passphrase retriever for each import
-		passRet := trust.GetBlankPassphraseRetriever(streams)
+		passRet := trust.GetPassphraseRetriever(streams.In(), streams.Out())
 		if err := loadKeyFromPath(privKeyImporters, keyPath, passRet); err != nil {
 			fmt.Fprintf(streams.Out(), "error importing key from %s: %s\n", keyPath, err)
 			errKeyPaths = append(errKeyPaths, keyPath)

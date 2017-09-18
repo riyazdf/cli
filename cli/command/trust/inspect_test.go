@@ -5,13 +5,14 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/docker/cli/cli/internal/test"
 	"github.com/docker/cli/cli/trust"
+	"github.com/docker/cli/internal/test"
+	"github.com/docker/cli/internal/test/testutil"
 	dockerClient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/testutil"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
+	"github.com/gotestyourself/gotestyourself/golden"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,7 @@ type fakeClient struct {
 	dockerClient.Client
 }
 
-func TestTrustInfoErrors(t *testing.T) {
+func TestTrustInspectCommandErrors(t *testing.T) {
 	testCases := []struct {
 		name          string
 		args          []string
@@ -40,24 +41,9 @@ func TestTrustInfoErrors(t *testing.T) {
 			expectedError: "invalid repository name",
 		},
 		{
-			name:          "nonexistent-reg",
-			args:          []string{"nonexistent-reg-name.io/image"},
-			expectedError: "No signatures or cannot access nonexistent-reg-name.io/image",
-		},
-		{
 			name:          "invalid-img-reference",
 			args:          []string{"ALPINE"},
 			expectedError: "invalid reference format",
-		},
-		{
-			name:          "unsigned-img-reference",
-			args:          []string{"riyaz/unsigned-img"},
-			expectedError: "No signatures or cannot access riyaz/unsigned-img",
-		},
-		{
-			name:          "nonexistent-img-reference",
-			args:          []string{"riyaz/nonexistent-img"},
-			expectedError: "No signatures or cannot access riyaz/nonexistent-img",
 		},
 	}
 	for _, tc := range testCases {
@@ -69,82 +55,99 @@ func TestTrustInfoErrors(t *testing.T) {
 	}
 }
 
-func TestTrustInfo(t *testing.T) {
+func TestTrustInspectCommandOfflineErrors(t *testing.T) {
 	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getOfflineNotaryRepository)
 	cmd := newInspectCommand(cli)
-	cmd.SetArgs([]string{"alpine"})
-	assert.NoError(t, cmd.Execute())
-
-	// Check for the signed tag headers
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
-	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
-	// Check for the signer headers
-	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for alpine:")
-	assert.Contains(t, cli.OutBuffer().String(), "(Repo Admin)")
-	// no delegations on this repo
-	assert.NotContains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
+	cmd.SetArgs([]string{"nonexistent-reg-name.io/image"})
+	cmd.SetOutput(ioutil.Discard)
+	testutil.ErrorContains(t, cmd.Execute(), "No signatures or cannot access nonexistent-reg-name.io/image")
 
 	cli = test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getOfflineNotaryRepository)
 	cmd = newInspectCommand(cli)
-	cmd.SetArgs([]string{"alpine:3.5"})
-	assert.NoError(t, cmd.Execute())
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
-	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
-	// Check for the signer headers
-	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for alpine:")
-	// make sure the tag isn't included
-	assert.NotContains(t, cli.OutBuffer().String(), "Administrative keys for alpine:3.5")
-	assert.Contains(t, cli.OutBuffer().String(), "3.5")
-	assert.Contains(t, cli.OutBuffer().String(), "(Repo Admin)")
-	// no delegations on this repo
-	assert.NotContains(t, cli.OutBuffer().String(), "3.6")
-	assert.NotContains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
-
-	cli = test.NewFakeCli(&fakeClient{})
-	cmd = newInspectCommand(cli)
-	cmd.SetArgs([]string{"dockerorcadev/trust-fixture"})
-	assert.NoError(t, cmd.Execute())
-
-	// Check for the signed tag headers
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNED TAG")
-	assert.Contains(t, cli.OutBuffer().String(), "DIGEST")
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNERS")
-	// Check for the signer headers
-	assert.Contains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNER")
-	assert.Contains(t, cli.OutBuffer().String(), "KEYS")
-	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:")
-	assert.Contains(t, cli.OutBuffer().String(), "Repository Key")
-	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
-	// all signers have names
-	assert.NotContains(t, cli.OutBuffer().String(), "(Repo Admin)")
-
-	cli = test.NewFakeCli(&fakeClient{})
-	cmd = newInspectCommand(cli)
-	cmd.SetArgs([]string{"dockerorcadev/trust-fixture:unsigned"})
-	assert.NoError(t, cmd.Execute())
-
-	// Check that the signatures table does not show up, and instead we get the message
-	assert.Contains(t, cli.OutBuffer().String(), "No signatures for dockerorcadev/trust-fixture:unsigned")
-	assert.NotContains(t, cli.OutBuffer().String(), "SIGNED TAG")
-	assert.NotContains(t, cli.OutBuffer().String(), "DIGEST")
-	assert.NotContains(t, cli.OutBuffer().String(), "SIGNERS")
-	// Check for the signer headers
-	assert.Contains(t, cli.OutBuffer().String(), "List of signers and their KeyIDs:")
-	assert.Contains(t, cli.OutBuffer().String(), "SIGNER")
-	assert.Contains(t, cli.OutBuffer().String(), "KEYS")
-	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:")
-	// make sure the tag isn't included
-	assert.NotContains(t, cli.OutBuffer().String(), "Administrative keys for dockerorcadev/trust-fixture:unsigned")
-	assert.Contains(t, cli.OutBuffer().String(), "Repository Key")
-	assert.Contains(t, cli.OutBuffer().String(), "Root Key")
-	// all signers have names
-	assert.NotContains(t, cli.OutBuffer().String(), "(Repo Admin)")
+	cmd.SetArgs([]string{"nonexistent-reg-name.io/image:tag"})
+	cmd.SetOutput(ioutil.Discard)
+	testutil.ErrorContains(t, cmd.Execute(), "No signatures or cannot access nonexistent-reg-name.io/image")
 }
 
-func TestTUFToSigner(t *testing.T) {
+func TestTrustInspectCommandUninitializedErrors(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getUninitializedNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"reg/unsigned-img"})
+	cmd.SetOutput(ioutil.Discard)
+	testutil.ErrorContains(t, cmd.Execute(), "No signatures or cannot access reg/unsigned-img")
+
+	cli = test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getUninitializedNotaryRepository)
+	cmd = newInspectCommand(cli)
+	cmd.SetArgs([]string{"reg/unsigned-img:tag"})
+	cmd.SetOutput(ioutil.Discard)
+	testutil.ErrorContains(t, cmd.Execute(), "No signatures or cannot access reg/unsigned-img:tag")
+}
+
+func TestTrustInspectCommandEmptyNotaryRepoErrors(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getEmptyTargetsNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"reg/img:unsigned-tag"})
+	cmd.SetOutput(ioutil.Discard)
+	assert.NoError(t, cmd.Execute())
+	assert.Contains(t, cli.OutBuffer().String(), "No signatures for reg/img:unsigned-tag")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for reg/img:")
+
+	cli = test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getEmptyTargetsNotaryRepository)
+	cmd = newInspectCommand(cli)
+	cmd.SetArgs([]string{"reg/img"})
+	cmd.SetOutput(ioutil.Discard)
+	assert.NoError(t, cmd.Execute())
+	assert.Contains(t, cli.OutBuffer().String(), "No signatures for reg/img")
+	assert.Contains(t, cli.OutBuffer().String(), "Administrative keys for reg/img:")
+}
+
+func TestTrustInspectCommandFullRepoWithoutSigners(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getLoadedWithNoSignersNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"signed-repo"})
+	assert.NoError(t, cmd.Execute())
+
+	golden.Assert(t, cli.OutBuffer().String(), "trust-inspect-full-repo-no-signers.golden")
+}
+
+func TestTrustInspectCommandOneTagWithoutSigners(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getLoadedWithNoSignersNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"signed-repo:green"})
+	assert.NoError(t, cmd.Execute())
+
+	golden.Assert(t, cli.OutBuffer().String(), "trust-inspect-one-tag-no-signers.golden")
+}
+
+func TestTrustInspectCommandFullRepoWithSigners(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getLoadedNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"signed-repo"})
+	assert.NoError(t, cmd.Execute())
+
+	golden.Assert(t, cli.OutBuffer().String(), "trust-inspect-full-repo-with-signers.golden")
+}
+
+func TestTrustInspectCommandUnsignedTagInSignedRepo(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getLoadedNotaryRepository)
+	cmd := newInspectCommand(cli)
+	cmd.SetArgs([]string{"signed-repo:unsigned"})
+	assert.NoError(t, cmd.Execute())
+
+	golden.Assert(t, cli.OutBuffer().String(), "trust-inspect-unsigned-tag-with-signers.golden")
+}
+
+func TestNotaryRoleToSigner(t *testing.T) {
 	assert.Equal(t, releasedRoleName, notaryRoleToSigner(data.CanonicalTargetsRole))
 	assert.Equal(t, releasedRoleName, notaryRoleToSigner(trust.ReleasesRole))
 	assert.Equal(t, "signer", notaryRoleToSigner("targets/signer"))
@@ -314,7 +317,7 @@ func TestMatchReleasedSignatureFromTargets(t *testing.T) {
 	assert.Equal(t, hex.EncodeToString(releasedTgt.Hashes[notary.SHA256]), outputRow.HashHex)
 }
 
-func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
+func TestGetSignerRolesWithKeyIDs(t *testing.T) {
 	roles := []data.Role{
 		{
 			RootRole: data.RootRole{
@@ -363,10 +366,6 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 		"alice": {"key11"},
 		"bob":   {"key71", "key72"},
 	}
-	expectedAdminRoleToKeyIDs := map[string]string{
-		"Root Key":       "key01, key41",
-		"Repository Key": "key31",
-	}
 
 	var roleWithSigs []client.RoleWithSignatures
 	for _, role := range roles {
@@ -375,6 +374,60 @@ func TestGetSignerAndAdminRolesWithKeyIDs(t *testing.T) {
 	}
 	signerRoleToKeyIDs := getDelegationRoleToKeyMap(roles)
 	assert.Equal(t, expectedSignerRoleToKeyIDs, signerRoleToKeyIDs)
-	adminRoleToKeyIDs := getAdministrativeRolesToKeyMap(roleWithSigs)
-	assert.Equal(t, expectedAdminRoleToKeyIDs, adminRoleToKeyIDs)
+}
+
+func TestFormatAdminRole(t *testing.T) {
+	aliceRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key11"},
+		},
+		Name: "targets/alice",
+	}
+	aliceRoleWithSigs := client.RoleWithSignatures{Role: aliceRole, Signatures: nil}
+	assert.Equal(t, "", formatAdminRole(aliceRoleWithSigs))
+
+	releasesRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key11"},
+		},
+		Name: "targets/releases",
+	}
+	releasesRoleWithSigs := client.RoleWithSignatures{Role: releasesRole, Signatures: nil}
+	assert.Equal(t, "", formatAdminRole(releasesRoleWithSigs))
+
+	timestampRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key11"},
+		},
+		Name: data.CanonicalTimestampRole,
+	}
+	timestampRoleWithSigs := client.RoleWithSignatures{Role: timestampRole, Signatures: nil}
+	assert.Equal(t, "", formatAdminRole(timestampRoleWithSigs))
+
+	snapshotRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key11"},
+		},
+		Name: data.CanonicalSnapshotRole,
+	}
+	snapshotRoleWithSigs := client.RoleWithSignatures{Role: snapshotRole, Signatures: nil}
+	assert.Equal(t, "", formatAdminRole(snapshotRoleWithSigs))
+
+	rootRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key11"},
+		},
+		Name: data.CanonicalRootRole,
+	}
+	rootRoleWithSigs := client.RoleWithSignatures{Role: rootRole, Signatures: nil}
+	assert.Equal(t, "Root Key:\tkey11\n", formatAdminRole(rootRoleWithSigs))
+
+	targetsRole := data.Role{
+		RootRole: data.RootRole{
+			KeyIDs: []string{"key99", "abc", "key11"},
+		},
+		Name: data.CanonicalTargetsRole,
+	}
+	targetsRoleWithSigs := client.RoleWithSignatures{Role: targetsRole, Signatures: nil}
+	assert.Equal(t, "Repository Key:\tabc, key11, key99\n", formatAdminRole(targetsRoleWithSigs))
 }

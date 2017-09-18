@@ -1,15 +1,18 @@
 package trust
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/docker/docker/api/types"
+	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
+	"github.com/pkg/errors"
 
 	"github.com/docker/cli/cli"
 	"github.com/docker/cli/cli/command"
-	"github.com/docker/cli/cli/command/image"
 	"github.com/docker/cli/cli/trust"
 	"github.com/spf13/cobra"
 )
@@ -29,34 +32,32 @@ func newRevokeCommand(dockerCli command.Cli) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	flags.BoolVarP(&options.forceYes, "yes", "y", false, "Answer yes to the removal question (no confirmation)")
+	flags.BoolVarP(&options.forceYes, "yes", "y", false, "Do not prompt for confirmation")
 	return cmd
 }
 
 func revokeTrust(cli command.Cli, remote string, options revokeOptions) error {
-	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, remote)
+	ctx := context.Background()
+	authResolver := func(ctx context.Context, index *registrytypes.IndexInfo) types.AuthConfig {
+		return command.ResolveAuthConfig(ctx, cli, index)
+	}
+	imgRefAndAuth, err := trust.GetImageReferencesAndAuth(ctx, authResolver, remote)
 	if err != nil {
 		return err
 	}
-	tag, err := getTag(ref)
-	if err != nil {
-		return err
+	tag := imgRefAndAuth.Tag()
+	if imgRefAndAuth.Tag() == "" && imgRefAndAuth.Digest() != "" {
+		return fmt.Errorf("cannot use a digest reference for IMAGE:TAG")
 	}
-	if tag == "" && !options.forceYes {
-		in := os.Stdin
-		fmt.Fprintf(
-			cli.Out(),
-			"Please confirm you would like to delete all signature data for %s? (y/n) ",
-			remote,
-		)
-		deleteRemote := askConfirm(in)
+	if imgRefAndAuth.Tag() == "" && !options.forceYes {
+		deleteRemote := command.PromptForConfirmation(os.Stdin, cli.Out(), fmt.Sprintf("Please confirm you would like to delete all signature data for %s?", remote))
 		if !deleteRemote {
 			fmt.Fprintf(cli.Out(), "\nAborting action.\n")
 			return nil
 		}
 	}
 
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, *authConfig, "push", "pull")
+	notaryRepo, err := cli.NotaryClient(*imgRefAndAuth, trust.ActionsPushAndPull)
 	if err != nil {
 		return err
 	}
@@ -65,14 +66,14 @@ func revokeTrust(cli command.Cli, remote string, options revokeOptions) error {
 		return err
 	}
 	defer clearChangeList(notaryRepo)
-	if err := revokeTestHelper(notaryRepo, tag); err != nil {
-		return fmt.Errorf("could not remove signature for %s: %s", remote, err)
+	if err := revokeSignature(notaryRepo, tag); err != nil {
+		return errors.Wrapf(err, "could not remove signature for %s", remote)
 	}
 	fmt.Fprintf(cli.Out(), "Successfully deleted signature for %s\n", remote)
 	return nil
 }
 
-func revokeTestHelper(notaryRepo *client.NotaryRepository, tag string) error {
+func revokeSignature(notaryRepo client.Repository, tag string) error {
 	if tag != "" {
 		// Revoke signature for the specified tag
 		if err := revokeSingleSig(notaryRepo, tag); err != nil {
@@ -89,7 +90,7 @@ func revokeTestHelper(notaryRepo *client.NotaryRepository, tag string) error {
 	return notaryRepo.Publish()
 }
 
-func revokeSingleSig(notaryRepo *client.NotaryRepository, tag string) error {
+func revokeSingleSig(notaryRepo client.Repository, tag string) error {
 	releasedTargetWithRole, err := notaryRepo.GetTargetByName(tag, trust.ReleasesRole, data.CanonicalTargetsRole)
 	if err != nil {
 		return err
@@ -98,11 +99,14 @@ func revokeSingleSig(notaryRepo *client.NotaryRepository, tag string) error {
 	return getSignableRolesForTargetAndRemove(releasedTarget, notaryRepo)
 }
 
-func revokeAllSigs(notaryRepo *client.NotaryRepository) error {
-
+func revokeAllSigs(notaryRepo client.Repository) error {
 	releasedTargetWithRoleList, err := notaryRepo.ListTargets(trust.ReleasesRole, data.CanonicalTargetsRole)
 	if err != nil {
 		return err
+	}
+
+	if len(releasedTargetWithRoleList) == 0 {
+		return fmt.Errorf("no signed tags to remove")
 	}
 
 	// we need all the roles that signed each released target so we can remove from all roles.
@@ -116,8 +120,8 @@ func revokeAllSigs(notaryRepo *client.NotaryRepository) error {
 }
 
 // get all the roles that signed the target and removes it from all roles.
-func getSignableRolesForTargetAndRemove(releasedTarget client.Target, notaryRepo *client.NotaryRepository) error {
-	signableRoles, err := image.GetSignableRoles(notaryRepo, &releasedTarget)
+func getSignableRolesForTargetAndRemove(releasedTarget client.Target, notaryRepo client.Repository) error {
+	signableRoles, err := trust.GetSignableRoles(notaryRepo, &releasedTarget)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/trust"
 	"github.com/docker/cli/opts"
+	"github.com/docker/docker/api/types"
+	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/tuf/data"
 	tufutils "github.com/docker/notary/tuf/utils"
@@ -70,26 +73,30 @@ func addSigner(cli command.Cli, options *signerAddOptions) error {
 func addSignerToImage(cli command.Cli, signerName string, imageName string, keyPaths []string) error {
 	fmt.Fprintf(cli.Out(), "\nAdding signer \"%s\" to %s...\n", signerName, imageName)
 
-	_, ref, repoInfo, authConfig, err := getImageReferencesAndAuth(cli, imageName)
+	ctx := context.Background()
+	authResolver := func(ctx context.Context, index *registrytypes.IndexInfo) types.AuthConfig {
+		return command.ResolveAuthConfig(ctx, cli, index)
+	}
+	imgRefAndAuth, err := trust.GetImageReferencesAndAuth(ctx, authResolver, imageName)
 	if err != nil {
 		return err
 	}
 
-	notaryRepo, err := trust.GetNotaryRepository(cli, repoInfo, *authConfig, "push", "pull")
+	notaryRepo, err := cli.NotaryClient(*imgRefAndAuth, trust.ActionsPushAndPull)
 	if err != nil {
-		return trust.NotaryError(ref.Name(), err)
+		return trust.NotaryError(imgRefAndAuth.Reference().Name(), err)
 	}
 
-	if err = notaryRepo.Update(false); err != nil {
+	if _, err = notaryRepo.ListTargets(); err != nil {
 		switch err.(type) {
 		case client.ErrRepoNotInitialized, client.ErrRepositoryNotExist:
 			fmt.Fprintf(cli.Out(), "Initializing signed repository for %s...\n", imageName)
 			if err := getOrGenerateRootKeyAndInitRepo(notaryRepo); err != nil {
-				return trust.NotaryError(ref.Name(), err)
+				return trust.NotaryError(imageName, err)
 			}
 			fmt.Fprintf(cli.Out(), "Successfully initialized %q\n", imageName)
 		default:
-			return trust.NotaryError(repoInfo.Name.Name(), err)
+			return trust.NotaryError(imageName, err)
 		}
 	}
 

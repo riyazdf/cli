@@ -7,39 +7,22 @@ import (
 	"testing"
 
 	"github.com/docker/cli/cli/trust"
-	"github.com/docker/distribution/reference"
 	"github.com/docker/notary"
 	"github.com/docker/notary/client"
 	"github.com/docker/notary/client/changelist"
 	"github.com/docker/notary/passphrase"
 	"github.com/docker/notary/trustpinning"
 	"github.com/docker/notary/tuf/data"
+
 	"github.com/stretchr/testify/assert"
 )
-
-func TestGetTag(t *testing.T) {
-	ref, err := reference.ParseNormalizedNamed("ubuntu@sha256:45b23dee08af5e43a7fea6c4cf9c25ccf269ee113168c19722f87876677c5cb2")
-	assert.NoError(t, err)
-	tag, err := getTag(ref)
-	assert.EqualError(t, err, "cannot use a digest reference for IMAGE:TAG")
-
-	ref, err = reference.ParseNormalizedNamed("alpine:latest")
-	assert.NoError(t, err)
-	tag, err = getTag(ref)
-	assert.Equal(t, tag, "latest")
-
-	ref, err = reference.ParseNormalizedNamed("alpine")
-	assert.NoError(t, err)
-	tag, err = getTag(ref)
-	assert.Equal(t, tag, "")
-}
 
 func TestGetOrGenerateNotaryKey(t *testing.T) {
 	tmpDir, err := ioutil.TempDir("", "notary-test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	notaryRepo, err := client.NewFileCachedRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
 	assert.NoError(t, err)
 
 	// repo is empty, try making a root key
@@ -48,9 +31,9 @@ func TestGetOrGenerateNotaryKey(t *testing.T) {
 	assert.NotNil(t, rootKeyA)
 
 	// we should only have one newly generated key
-	allKeys := notaryRepo.CryptoService.ListAllKeys()
+	allKeys := notaryRepo.GetCryptoService().ListAllKeys()
 	assert.Len(t, allKeys, 1)
-	assert.NotNil(t, notaryRepo.CryptoService.GetKey(rootKeyA.ID()))
+	assert.NotNil(t, notaryRepo.GetCryptoService().GetKey(rootKeyA.ID()))
 
 	// this time we should get back the same key if we ask for another root key
 	rootKeyB, err := getOrGenerateNotaryKey(notaryRepo, data.CanonicalRootRole)
@@ -58,9 +41,9 @@ func TestGetOrGenerateNotaryKey(t *testing.T) {
 	assert.NotNil(t, rootKeyB)
 
 	// we should only have one newly generated key
-	allKeys = notaryRepo.CryptoService.ListAllKeys()
+	allKeys = notaryRepo.GetCryptoService().ListAllKeys()
 	assert.Len(t, allKeys, 1)
-	assert.NotNil(t, notaryRepo.CryptoService.GetKey(rootKeyB.ID()))
+	assert.NotNil(t, notaryRepo.GetCryptoService().GetKey(rootKeyB.ID()))
 
 	// The key we retrieved should be identical to the one we generated
 	assert.Equal(t, rootKeyA, rootKeyB)
@@ -71,9 +54,9 @@ func TestGetOrGenerateNotaryKey(t *testing.T) {
 	assert.NotNil(t, releasesKey)
 
 	// we should now have two keys
-	allKeys = notaryRepo.CryptoService.ListAllKeys()
+	allKeys = notaryRepo.GetCryptoService().ListAllKeys()
 	assert.Len(t, allKeys, 2)
-	assert.NotNil(t, notaryRepo.CryptoService.GetKey(releasesKey.ID()))
+	assert.NotNil(t, notaryRepo.GetCryptoService().GetKey(releasesKey.ID()))
 	// The key we retrieved should be identical to the one we generated
 	assert.NotEqual(t, releasesKey, rootKeyA)
 	assert.NotEqual(t, releasesKey, rootKeyB)
@@ -84,7 +67,7 @@ func TestGetOrGenerateNotaryKeyAndInitRepo(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	notaryRepo, err := client.NewFileCachedRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
 	assert.NoError(t, err)
 
 	err = getOrGenerateRootKeyAndInitRepo(notaryRepo)
@@ -96,7 +79,7 @@ func TestAddStageSigners(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	notaryRepo, err := client.NewFileCachedNotaryRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
+	notaryRepo, err := client.NewFileCachedRepository(tmpDir, "gun", "https://localhost", nil, passphrase.ConstantRetriever(passwd), trustpinning.TrustPinConfig{})
 	assert.NoError(t, err)
 
 	// stage targets/user
