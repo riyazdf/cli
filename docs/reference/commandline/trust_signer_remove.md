@@ -149,7 +149,7 @@ Repository Key:	ece554f14c9fc399da523a5f4e24fe306a0a6ee1cc79a10e4553d2ab20a8d926
 Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
-`docker trust signer-remove` will remove signers to repositories on a best effort basis, so it will continue to remove the signer from subsequent repositories if one attempt fails:
+`docker trust signer-remove` removes signers to repositories on a best effort basis, so it will continue to remove the signer from subsequent repositories if one attempt fails:
 
 ```bash
 $ docker trust signer-remove alice example/unauthorized example/authorized
