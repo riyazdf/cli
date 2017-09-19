@@ -15,7 +15,6 @@ import (
 	"github.com/docker/notary/trustmanager"
 	"github.com/docker/notary/tuf/data"
 	tufutils "github.com/docker/notary/tuf/utils"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -52,42 +51,14 @@ func generateKey(streams command.Streams, keyName string) error {
 	if err != nil {
 		return err
 	}
-	var (
-		chosenPassphrase string
-		giveup           bool
-		pemPrivKey       []byte
-	)
-	keyID := privKey.ID()
-	passRet := trust.GetPassphraseRetriever(streams.In(), streams.Out())
-	fmt.Fprintf(streams.Out(), "Encrypting private key material for %s...\n", keyName)
-	for attempts := 0; ; attempts++ {
-		chosenPassphrase, giveup, err = passRet(keyID, "", true, attempts)
-		if err == nil {
-			break
-		}
-		if giveup || attempts > 10 {
-			return trustmanager.ErrAttemptsExceeded{}
-		}
-	}
 
-	if chosenPassphrase != "" {
-		pemPrivKey, err = tufutils.ConvertPrivateKeyToPKCS8(privKey, data.RoleName(keyName), "", chosenPassphrase)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("no password provided")
-	}
-	cwd, err := os.Getwd()
+	// Automatically load the private key to local storage for use
+	privKeyFileStore, err := trustmanager.NewKeyFileStore(trust.GetTrustDirectory(), trust.GetPassphraseRetriever(streams.In(), streams.Out()))
 	if err != nil {
 		return err
 	}
-	privFileName := strings.Join([]string{strings.Join([]string{keyName, "key"}, "-"), "priv"}, ".")
-	privFilePath := filepath.Join(cwd, privFileName)
-	pubFileName := strings.Join([]string{keyName, "pub"}, ".")
-	pubFilePath := filepath.Join(cwd, pubFileName)
 
-	err = ioutil.WriteFile(privFilePath, pemPrivKey, notary.PrivNoExecPerms)
+	privKeyFileStore.AddKey(trustmanager.KeyInfo{Role: data.RoleName(keyName)}, privKey)
 	if err != nil {
 		return err
 	}
@@ -100,9 +71,17 @@ func generateKey(streams command.Streams, keyName string) error {
 		},
 		Bytes: pubKey.Public(),
 	}
+
+	// Output the public key to a file in the CWD
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	pubFileName := strings.Join([]string{keyName, "pub"}, ".")
+	pubFilePath := filepath.Join(cwd, pubFileName)
 	if err := ioutil.WriteFile(pubFilePath, pem.EncodeToMemory(&pubPEM), notary.PrivNoExecPerms); err != nil {
 		return err
 	}
-	fmt.Fprintf(streams.Out(), "Successfully generated encrypted private key %s and public key %s\n", privFileName, pubFileName)
+	fmt.Fprintf(streams.Out(), "Successfully generated and loaded private key. Corresponding public key available: %s\n", pubFileName)
 	return nil
 }
