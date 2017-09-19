@@ -19,19 +19,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type signOptions struct {
+	local bool
+}
+
 func newSignCommand(dockerCli command.Cli) *cobra.Command {
+	options := signOptions{}
 	cmd := &cobra.Command{
 		Use:   "sign [OPTIONS] IMAGE:TAG",
 		Short: "Sign an image",
 		Args:  cli.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return signImage(dockerCli, args[0])
+			return signImage(dockerCli, args[0], options)
 		},
 	}
+	flags := cmd.Flags()
+	flags.BoolVarP(&options.local, "local", "", false, "Sign a locally tagged image")
 	return cmd
 }
 
-func signImage(cli command.Cli, imageName string) error {
+func signImage(cli command.Cli, imageName string, options signOptions) error {
 	ctx := context.Background()
 	authResolver := func(ctx context.Context, index *registrytypes.IndexInfo) types.AuthConfig {
 		return command.ResolveAuthConfig(ctx, cli, index)
@@ -79,13 +86,15 @@ func signImage(cli command.Cli, imageName string) error {
 	}
 	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, imgRefAndAuth.RepoInfo().Index, "push")
 	target, err := createTarget(notaryRepo, tag)
-	if err != nil {
+	if err != nil || options.local {
 		switch err := err.(type) {
-		case client.ErrNoSuchTarget, client.ErrRepositoryNotExist:
+		// If the error is nil then the local flag is set
+		case client.ErrNoSuchTarget, client.ErrRepositoryNotExist, nil:
 			// Fail fast if the image doesn't exist locally
 			if err := checkLocalImageExistence(ctx, cli, imageName); err != nil {
 				return err
 			}
+			fmt.Fprintf(cli.Out(), "Signing and pushing trust data for local image %s, may overwrite remote trust data\n", imageName)
 			return image.TrustedPush(ctx, cli, imgRefAndAuth.RepoInfo(), imgRefAndAuth.Reference(), *imgRefAndAuth.AuthConfig(), requestPrivilege)
 		default:
 			return err
