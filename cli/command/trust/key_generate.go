@@ -32,10 +32,19 @@ func newKeyGenerateCommand(dockerCli command.Streams) *cobra.Command {
 
 func generateKeys(streams command.Streams, keyNames []string) error {
 	var genKeyErrs []string
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
 	for _, keyName := range keyNames {
-		if err := generateKey(streams, keyName); err != nil {
+		fmt.Fprintf(streams.Out(), "\nGenerating key for %s...\n", keyName)
+		freshPassRet := trust.GetPassphraseRetriever(streams.In(), streams.Out())
+		if err := generateKey(keyName, cwd, trust.GetTrustDirectory(), freshPassRet); err != nil {
 			fmt.Fprintf(streams.Out(), err.Error())
 			genKeyErrs = append(genKeyErrs, keyName)
+		} else {
+			pubFileName := strings.Join([]string{keyName, "pub"}, ".")
+			fmt.Fprintf(streams.Out(), "Successfully generated and loaded private key. Corresponding public key available: %s\n", pubFileName)
 		}
 	}
 
@@ -45,15 +54,14 @@ func generateKeys(streams command.Streams, keyNames []string) error {
 	return nil
 }
 
-func generateKey(streams command.Streams, keyName string) error {
-	fmt.Fprintf(streams.Out(), "\nGenerating key for %s...\n", keyName)
+func generateKey(keyName, pubDir, privTrustDir string, passRet notary.PassRetriever) error {
 	privKey, err := tufutils.GenerateKey(data.ECDSAKey)
 	if err != nil {
 		return err
 	}
 
 	// Automatically load the private key to local storage for use
-	privKeyFileStore, err := trustmanager.NewKeyFileStore(trust.GetTrustDirectory(), trust.GetPassphraseRetriever(streams.In(), streams.Out()))
+	privKeyFileStore, err := trustmanager.NewKeyFileStore(privTrustDir, passRet)
 	if err != nil {
 		return err
 	}
@@ -73,15 +81,10 @@ func generateKey(streams command.Streams, keyName string) error {
 	}
 
 	// Output the public key to a file in the CWD
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
 	pubFileName := strings.Join([]string{keyName, "pub"}, ".")
-	pubFilePath := filepath.Join(cwd, pubFileName)
+	pubFilePath := filepath.Join(pubDir, pubFileName)
 	if err := ioutil.WriteFile(pubFilePath, pem.EncodeToMemory(&pubPEM), notary.PrivNoExecPerms); err != nil {
 		return err
 	}
-	fmt.Fprintf(streams.Out(), "Successfully generated and loaded private key. Corresponding public key available: %s\n", pubFileName)
 	return nil
 }
