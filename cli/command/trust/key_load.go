@@ -15,6 +15,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	ownerReadOnlyPerms     = 0400
+	ownerReadAndWritePerms = 0600
+)
+
 func newKeyLoadCommand(dockerCli command.Streams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key-load KEY [KEY...] ",
@@ -59,8 +64,8 @@ func loadKeyFromPath(privKeyImporters []utils.Importer, keyPath string, passRet 
 	if err != nil {
 		return err
 	}
-	if fileInfo.Mode() > os.FileMode(notary.PrivExecPerms) {
-		return fmt.Errorf("private key permission from %s should be set to 600", keyPath)
+	if fileInfo.Mode() != ownerReadOnlyPerms && fileInfo.Mode() != ownerReadAndWritePerms {
+		return fmt.Errorf("private key permission from %s should be set to 400 or 600", keyPath)
 	}
 	from, err := os.OpenFile(keyPath, os.O_RDONLY, notary.PrivExecPerms)
 	if err != nil {
