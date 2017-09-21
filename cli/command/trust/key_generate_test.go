@@ -100,3 +100,25 @@ func TestGenerateKeySuccess(t *testing.T) {
 	_, err = tufutils.ParsePKCS8ToTufKey(keyPEM.Bytes, []byte(passwd))
 	assert.NoError(t, err)
 }
+
+func TestValidateKeyArgs(t *testing.T) {
+	pubKeyCWD, err := ioutil.TempDir("", "pub-keys-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(pubKeyCWD)
+
+	err = validateKeyArgs([]string{"a", "b", "C_123", "key-name"}, pubKeyCWD)
+	assert.NoError(t, err)
+
+	err = validateKeyArgs([]string{"a", "a"}, pubKeyCWD)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "key names must be unique, found duplicate key name: \"a\"")
+
+	err = validateKeyArgs([]string{"a/b"}, pubKeyCWD)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "key name \"a/b\" must not contain special characters")
+
+	assert.NoError(t, ioutil.WriteFile(filepath.Join(pubKeyCWD, "a.pub"), []byte("abc"), notary.PrivExecPerms))
+	err = validateKeyArgs([]string{"a"}, pubKeyCWD)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "public key file already exists: \"a.pub\"")
+}

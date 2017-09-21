@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/docker/cli/cli"
@@ -30,10 +31,38 @@ func newKeyGenerateCommand(dockerCli command.Streams) *cobra.Command {
 	return cmd
 }
 
+// key names can use alphanumeric + _ + - characters
+var validKeyName = regexp.MustCompile(`^[a-zA-Z0-9\_\-]+$`).MatchString
+
+// validate that all of the key names are unique and are alphanumeric + _ + -
+// and that we do not already have public key files in the current dir on disk
+func validateKeyArgs(keyNames []string, cwdPath string) error {
+	uniqueKeyNames := map[string]struct{}{}
+	for _, keyName := range keyNames {
+		if !validKeyName(keyName) {
+			return fmt.Errorf("key name \"%s\" must not contain special characters", keyName)
+		}
+
+		if _, ok := uniqueKeyNames[keyName]; ok {
+			return fmt.Errorf("key names must be unique, found duplicate key name: \"%s\"", keyName)
+		}
+		uniqueKeyNames[keyName] = struct{}{}
+
+		pubKeyFileName := keyName + ".pub"
+		if _, err := os.Stat(filepath.Join(cwdPath, pubKeyFileName)); err == nil {
+			return fmt.Errorf("public key file already exists: \"%s\"", pubKeyFileName)
+		}
+	}
+	return nil
+}
+
 func generateKeys(streams command.Streams, keyNames []string) error {
 	var genKeyErrs []string
 	cwd, err := os.Getwd()
 	if err != nil {
+		return err
+	}
+	if err := validateKeyArgs(keyNames, cwd); err != nil {
 		return err
 	}
 	for _, keyName := range keyNames {
