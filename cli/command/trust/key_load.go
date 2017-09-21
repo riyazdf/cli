@@ -79,7 +79,7 @@ func loadPrivKeyFromPath(privKeyImporters []utils.Importer, keyPath, keyName str
 		return err
 	}
 	if _, _, err := tufutils.ExtractPrivateKeyAttributes(keyBytes); err != nil {
-		return fmt.Errorf("provided file %s is not a supported private key", keyPath)
+		return fmt.Errorf("provided file %s is not a supported private key - to add a signer's public key use docker trust signer-add", keyPath)
 	}
 	// Rewind the file pointer
 	if _, err := from.Seek(0, 0); err != nil {

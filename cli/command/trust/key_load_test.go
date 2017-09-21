@@ -156,27 +156,27 @@ func TestLoadKeyTooPermissive(t *testing.T) {
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey667.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0677))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 400 or 600", privKeyFilepath), err.Error())
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey777.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0777))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 400 or 600", privKeyFilepath), err.Error())
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey400.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0400))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.NoError(t, err)
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey600.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0600))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.NoError(t, err)
 }
 
@@ -204,5 +204,5 @@ func TestLoadPubKeyFailure(t *testing.T) {
 	// import the key to our keyStorageDir - it should fail
 	err = loadPrivKeyFromPath(privKeyImporters, pubKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
-	assert.Contains(t, fmt.Sprintf("provided file %s is not a supported private key", pubKeyFilepath), err.Error())
+	assert.Contains(t, fmt.Sprintf("provided file %s is not a supported private key - to add a signer's public key use docker trust signer-add", pubKeyFilepath), err.Error())
 }

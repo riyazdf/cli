@@ -83,8 +83,5 @@ func generateKey(keyName, pubDir, privTrustDir string, passRet notary.PassRetrie
 	// Output the public key to a file in the CWD
 	pubFileName := strings.Join([]string{keyName, "pub"}, ".")
 	pubFilePath := filepath.Join(pubDir, pubFileName)
-	if err := ioutil.WriteFile(pubFilePath, pem.EncodeToMemory(&pubPEM), notary.PrivNoExecPerms); err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(pubFilePath, pem.EncodeToMemory(&pubPEM), notary.PrivNoExecPerms)
 }
