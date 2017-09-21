@@ -22,17 +22,17 @@ import (
 func newKeyGenerateCommand(dockerCli command.Streams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "key-generate NAME [NAME...]",
-		Short: "Generate a signing key",
+		Short: "Generate and load a signing key-pair",
 		Args:  cli.RequiresMinArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return generateKeys(dockerCli, args)
+			return setupPassphraseAndGenerateKeys(dockerCli, args)
 		},
 	}
 	return cmd
 }
 
 // key names can use alphanumeric + _ + - characters
-var validKeyName = regexp.MustCompile(`^[a-zA-Z0-9\_\-]+$`).MatchString
+var validKeyName = regexp.MustCompile(`^[a-zA-Z0-9\_]+[a-zA-Z0-9\_\-]*$`).MatchString
 
 // validate that all of the key names are unique and are alphanumeric + _ + -
 // and that we do not already have public key files in the current dir on disk
@@ -56,19 +56,25 @@ func validateKeyArgs(keyNames []string, cwdPath string) error {
 	return nil
 }
 
-func generateKeys(streams command.Streams, keyNames []string) error {
-	var genKeyErrs []string
+func setupPassphraseAndGenerateKeys(streams command.Streams, keyNames []string) error {
+	// always use a fresh passphrase for each key generation
+	freshPassRetGetter := func() notary.PassRetriever { return trust.GetPassphraseRetriever(streams.In(), streams.Out()) }
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	if err := validateKeyArgs(keyNames, cwd); err != nil {
+	return generateKeys(streams, keyNames, cwd, freshPassRetGetter)
+}
+
+func generateKeys(streams command.Streams, keyNames []string, workingDir string, passphraseGetter func() notary.PassRetriever) error {
+	var genKeyErrs []string
+	if err := validateKeyArgs(keyNames, workingDir); err != nil {
 		return err
 	}
 	for _, keyName := range keyNames {
 		fmt.Fprintf(streams.Out(), "\nGenerating key for %s...\n", keyName)
-		freshPassRet := trust.GetPassphraseRetriever(streams.In(), streams.Out())
-		if err := generateKey(keyName, cwd, trust.GetTrustDirectory(), freshPassRet); err != nil {
+		freshPassRet := passphraseGetter()
+		if err := generateKey(keyName, workingDir, trust.GetTrustDirectory(), freshPassRet); err != nil {
 			fmt.Fprintf(streams.Out(), err.Error())
 			genKeyErrs = append(genKeyErrs, keyName)
 		} else {
