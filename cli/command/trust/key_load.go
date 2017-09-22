@@ -28,7 +28,7 @@ type keyLoadOptions struct {
 func newKeyLoadCommand(dockerCli command.Streams) *cobra.Command {
 	var options keyLoadOptions
 	cmd := &cobra.Command{
-		Use:   "key-load KEY",
+		Use:   "key-load [OPTIONS] KEY",
 		Short: "Load a private key file for signing",
 		Args:  cli.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
