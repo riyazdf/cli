@@ -28,20 +28,20 @@ func TestTrustKeyLoadErrors(t *testing.T) {
 	}{
 		{
 			name:           "not-enough-args",
-			expectedError:  "requires at least 1 argument",
+			expectedError:  "exactly 1 argument",
+			expectedOutput: "",
+		},
+		{
+			name:           "too-many-args",
+			args:           []string{"iamnotakey", "alsonotakey"},
+			expectedError:  "exactly 1 argument",
 			expectedOutput: "",
 		},
 		{
 			name:           "not-a-key",
 			args:           []string{"iamnotakey"},
-			expectedError:  "Error importing keys from: iamnotakey",
-			expectedOutput: "\nLoading key from \"iamnotakey\"...\nerror importing key from iamnotakey: stat iamnotakey: no such file or directory",
-		},
-		{
-			name:           "multiple-not-a-key",
-			args:           []string{"iamnotakey", "alsonotakey"},
-			expectedError:  "Error importing keys from: iamnotakey, alsonotakey",
-			expectedOutput: "\nLoading key from \"iamnotakey\"...\nerror importing key from iamnotakey: stat iamnotakey: no such file or directory\n\nLoading key from \"alsonotakey\"...\n",
+			expectedError:  "error importing key from iamnotakey: stat iamnotakey: no such file or directory",
+			expectedOutput: "\nLoading key from \"iamnotakey\"...\n",
 		},
 	}
 	tmpDir, err := ioutil.TempDir("", "docker-key-load-test-")
@@ -107,7 +107,7 @@ func TestLoadKeyFromPath(t *testing.T) {
 	privKeyImporters := []utils.Importer{keyFileStore}
 
 	// import the key to our keyStorageDir
-	assert.NoError(t, loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever))
+	assert.NoError(t, loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer-name", cannedPasswordRetriever))
 
 	// check that the appropriate ~/<trust_dir>/private/<key_id>.key file exists
 	expectedImportKeyPath := filepath.Join(keyStorageDir, notary.PrivDir, privKeyID+"."+notary.KeyExtension)
@@ -119,8 +119,7 @@ func TestLoadKeyFromPath(t *testing.T) {
 	defer from.Close()
 	fromBytes, _ := ioutil.ReadAll(from)
 	keyPEM, _ := pem.Decode(fromBytes)
-	// the default role is: signer
-	assert.Equal(t, "signer", keyPEM.Headers["role"])
+	assert.Equal(t, "signer-name", keyPEM.Headers["role"])
 	// the default GUN is empty
 	assert.Equal(t, "", keyPEM.Headers["gun"])
 	// assert encrypted header
@@ -150,33 +149,60 @@ func TestLoadKeyTooPermissive(t *testing.T) {
 	privKeyImporters := []utils.Importer{keyFileStore}
 
 	// import the key to our keyStorageDir
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 400 or 600", privKeyFilepath), err.Error())
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey667.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0677))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 400 or 600", privKeyFilepath), err.Error())
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey777.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0777))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.Error(t, err)
 	assert.Contains(t, fmt.Sprintf("private key permission from %s should be set to 400 or 600", privKeyFilepath), err.Error())
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey400.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0400))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.NoError(t, err)
 
 	privKeyFilepath = filepath.Join(privKeyDir, "privkey600.pem")
 	assert.NoError(t, ioutil.WriteFile(privKeyFilepath, privKeyFixture, 0600))
 
-	err = loadKeyFromPath(privKeyImporters, privKeyFilepath, cannedPasswordRetriever)
+	err = loadPrivKeyFromPath(privKeyImporters, privKeyFilepath, "signer", cannedPasswordRetriever)
 	assert.NoError(t, err)
+}
+
+var pubKeyFixture = []byte(`-----BEGIN PUBLIC KEY-----
+	MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUIH9AYtrcDFzZrFJBdJZkn21d+4c
+	H3nzy2O6Q/ct4BjOBKa+WCdRtPo78bA+C/7t81ADQO8Jqaj59W50rwoqDQ==
+	-----END PUBLIC KEY-----`)
+
+func TestLoadPubKeyFailure(t *testing.T) {
+	pubKeyDir, err := ioutil.TempDir("", "key-load-test-pubkey-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(pubKeyDir)
+	pubKeyFilepath := filepath.Join(pubKeyDir, "pubkey.pem")
+	assert.NoError(t, ioutil.WriteFile(pubKeyFilepath, pubKeyFixture, notary.PrivNoExecPerms))
+	keyStorageDir, err := ioutil.TempDir("", "loaded-keys-")
+	assert.NoError(t, err)
+	defer os.RemoveAll(keyStorageDir)
+
+	passwd := "password"
+	cannedPasswordRetriever := passphrase.ConstantRetriever(passwd)
+	keyFileStore, err := storage.NewPrivateKeyFileStorage(keyStorageDir, notary.KeyExtension)
+	assert.NoError(t, err)
+	privKeyImporters := []utils.Importer{keyFileStore}
+
+	// import the key to our keyStorageDir - it should fail
+	err = loadPrivKeyFromPath(privKeyImporters, pubKeyFilepath, "signer", cannedPasswordRetriever)
+	assert.Error(t, err)
+	assert.Contains(t, fmt.Sprintf("provided file %s is not a supported private key - to add a signer's public key use docker trust signer-add", pubKeyFilepath), err.Error())
 }
