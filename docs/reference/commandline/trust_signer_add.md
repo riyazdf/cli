@@ -195,7 +195,7 @@ Root Key:	3cb2228f6561e58f46dbc4cda4fcaff9d5ef22e865a94636f82450d1d2234949
 ```
 
 
-`docker trust signer-add` will add signers to repositories on a best effort basis, so it will continue to add the signer to subsequent repositories if one attempt fails:
+`docker trust signer-add` adds signers to repositories on a best effort basis, so it will continue to add the signer to subsequent repositories if one attempt fails:
 
 ```bash
 $ docker trust signer-add alice example/unauthorized example/authorized -k alice.crt
