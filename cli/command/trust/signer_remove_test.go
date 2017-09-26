@@ -60,6 +60,7 @@ func TestTrustSignerRemoveErrors(t *testing.T) {
 		cli.SetNotaryClient(getOfflineNotaryRepository)
 		cmd := newSignerRemoveCommand(cli)
 		cmd.SetArgs(tc.args)
+		cmd.SetOutput(ioutil.Discard)
 		cmd.Execute()
 		assert.Contains(t, cli.OutBuffer().String(), tc.expectedError)
 	}

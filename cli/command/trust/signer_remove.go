@@ -110,9 +110,9 @@ func removeSingleSigner(cli command.Cli, image, signerName string, forceYes bool
 		return err
 	}
 	if ok, err := isLastSignerForReleases(role, allRoles); ok && !forceYes {
-		removeSigner := command.PromptForConfirmation(os.Stdin, cli.Out(), fmt.Sprintf("The signer %s signed the last released version of %s. "+
-			"Removing them will lead to signed tags from %s being unpullable."+
-			"Are you sure you want to continue?: ",
+		removeSigner := command.PromptForConfirmation(os.Stdin, cli.Out(), fmt.Sprintf("The signer \"%s\" signed the last released version of %s. "+
+			"Removing this signer will make %s unpullable. "+
+			"Are you sure you want to continue?",
 			signerName, image, image,
 		))
 
