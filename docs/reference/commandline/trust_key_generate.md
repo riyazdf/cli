@@ -16,7 +16,7 @@ keywords: "Key, notary, trust"
 # trust key-generate
 
 ```markdown
-Usage:  docker trust key-generate [OPTIONS] NAME 
+Usage:  docker trust key-generate NAME
 
 Generate and load a signing key-pair
 
