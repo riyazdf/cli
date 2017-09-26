@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/docker/cli/cli"
@@ -44,9 +45,13 @@ func newSignerAddCommand(dockerCli command.Cli) *cobra.Command {
 	return cmd
 }
 
+var validSignerName = regexp.MustCompile(`^[a-z0-9]+[a-z0-9\_\-]*$`).MatchString
+
 func addSigner(cli command.Cli, options *signerAddOptions) error {
 	signerName := options.signer
-
+	if !validSignerName(signerName) {
+		return fmt.Errorf("signer name \"%s\" must not contain uppercase or special characters", signerName)
+	}
 	if signerName == "releases" {
 		return fmt.Errorf("releases is a reserved keyword, please use a different signer name")
 	}

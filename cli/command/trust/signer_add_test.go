@@ -32,6 +32,21 @@ func TestTrustSignerAddErrors(t *testing.T) {
 			args:          []string{"releases", "my-image", "-k", "/path/to/key"},
 			expectedError: "releases is a reserved keyword, please use a different signer name",
 		},
+		{
+			name:          "disallowed-chars",
+			args:          []string{"ali/ce", "my-image", "-k", "/path/to/key"},
+			expectedError: "signer name \"ali/ce\" must not contain uppercase or special characters",
+		},
+		{
+			name:          "no-upper-case",
+			args:          []string{"Alice", "my-image", "-k", "/path/to/key"},
+			expectedError: "signer name \"Alice\" must not contain uppercase or special characters",
+		},
+		{
+			name:          "start-with-letter",
+			args:          []string{"_alice", "my-image", "-k", "/path/to/key"},
+			expectedError: "signer name \"_alice\" must not contain uppercase or special characters",
+		},
 	}
 	tmpDir, err := ioutil.TempDir("", "docker-sign-test-")
 	assert.NoError(t, err)
