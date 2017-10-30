@@ -155,3 +155,13 @@ func TestChangeList(t *testing.T) {
 	cl, err := notaryRepo.GetChangelist()
 	assert.Equal(t, len(cl.List()), 0)
 }
+
+func TestLocalFlag(t *testing.T) {
+	cli := test.NewFakeCli(&fakeClient{})
+	cli.SetNotaryClient(getEmptyTargetsNotaryRepository)
+	cmd := newSignCommand(cli)
+	cmd.SetArgs([]string{"--local", "reg-name.io/image:red"})
+	cmd.SetOutput(ioutil.Discard)
+	testutil.ErrorContains(t, cmd.Execute(), "error during connect: Get /images/reg-name.io/image:red/json: unsupported protocol scheme")
+
+}
